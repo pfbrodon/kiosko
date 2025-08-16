@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Listado de Productos</h2>
+        <a href="{% url 'crear_producto' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Producto
+        </a>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3" id="searchForm">
+                <div class="col-md-2">
+                    <label for="{{ form.categoria.id_for_label }}" class="form-label">Categoría</label>
+                    {{ form.categoria }}
+                </div>
+                <div class="col-md-2">
+                    <label for="{{ form.subcategoria.id_for_label }}" class="form-label">Subcategoría</label>
+                    {{ form.subcategoria }}
+                </div>
+                <div class="col-md-2">
+                    <label for="{{ form.proveedor.id_for_label }}" class="form-label">Proveedor</label>
+                    {{ form.proveedor }}
+                </div>
+                <div class="col-md-2">
+                    <label for="{{ form.estado.id_for_label }}" class="form-label">Estado</label>
+                    {{ form.estado }}
+                </div>
+                <div class="col-md-2">
+                    <label for="{{ form.busqueda.id_for_label }}" class="form-label">Buscar</label>
+                    {{ form.busqueda }}
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Marca</th>
+                            <th>Categoría</th>
+                            <th>Subcategoría</th>
+                            <th>Proveedor</th>
+                            <th>Precio Compra</th>
+                            <th>Descuento</th>
+                            <th>Precio Venta</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for producto in productos %}
+                        <tr>
+                            <td>{{ producto.nombre }}</td>
+                            <td>{{ producto.marca|default:"Sin marca" }}</td>
+                            <td>{{ producto.subcategoria.categoria }}</td>
+                            <td>{{ producto.subcategoria }}</td>
+                            <td>{{ producto.proveedor }}</td>
+                            <td>${{ producto.precio_compra_unitario|floatformat:2 }}</td>
+                            <td>
+                                {% if producto.descuento_compra %}
+                                    <span class="text-success">{{ producto.descuento_compra }}%</span>
+                                {% else %}
+                                    <span class="text-muted">0%</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">${{ producto.precio_venta_final|floatformat:2 }}</td>
+                            <td>
+                                {% if producto.activo %}
+                                <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                <span class="badge bg-danger">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'editar_producto' producto.id %}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" 
+                                            onclick="confirmarEliminar({{ producto.id }}, '{{ producto.nombre|escapejs }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center">No se encontraron productos</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="eliminarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar el producto <span id="productoNombre"></span>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminar" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmarEliminar(id, nombre) {
+    const modal = new bootstrap.Modal(document.getElementById('eliminarModal'));
+    document.getElementById('productoNombre').textContent = nombre;
+    document.getElementById('formEliminar').action = `/productos/${id}/eliminar/`;
+    modal.show();
+}
+
+function resetForm() {
+    const form = document.getElementById('searchForm');
+    const selects = form.querySelectorAll('select');
+    const inputs = form.querySelectorAll('input[type="text"]');
+    
+    // Resetear selects
+    selects.forEach(select => {
+        select.value = '';
+    });
+    
+    // Resetear inputs
+    inputs.forEach(input => {
+        input.value = '';
+    });
+    
+    // Enviar el formulario
+    form.submit();
+}
+</script>
+{% endblock %}

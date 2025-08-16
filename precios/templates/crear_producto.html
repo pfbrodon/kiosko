@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title mb-0">{% if editing %}Editar{% else %}Crear{% endif %} Producto</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Información básica -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre</label>
+                                {{ form.nombre }}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.marca.id_for_label }}" class="form-label">Marca</label>
+                                {{ form.marca }}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.subcategoria.id_for_label }}" class="form-label">Subcategoría</label>
+                                {{ form.subcategoria }}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.proveedor.id_for_label }}" class="form-label">Proveedor</label>
+                                {{ form.proveedor }}
+                            </div>
+                        </div>
+
+                        <!-- Sección de Compra y Cálculos -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>Información de Compra</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- Tipo de compra y unidades -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="{{ form.tipo_compra.id_for_label }}" class="form-label">Tipo de Compra</label>
+                                        {{ form.tipo_compra }}
+                                    </div>
+                                    <div class="col-md-6" id="unidadesContainer">
+                                        <label for="{{ form.unidades_por_paquete.id_for_label }}" class="form-label">Unidades por Paquete</label>
+                                        {{ form.unidades_por_paquete }}
+                                        <small class="text-muted d-block">Solo para compras por caja/bolsa</small>
+                                    </div>
+                                </div>
+
+                                <!-- Precios y cálculos -->
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="{{ form.precio_compra_paquete.id_for_label }}" class="form-label">Precio de Compra</label>
+                                        {{ form.precio_compra_paquete }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Precio Unitario</label>
+                                        <input type="text" class="form-control" id="precioUnitario" readonly>
+                                        <small class="text-muted">Precio por unidad sin descuento</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="{{ form.descuento_compra.id_for_label }}" class="form-label">Descuento (%)</label>
+                                        {{ form.descuento_compra }}
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Precio con Descuento</label>
+                                        <input type="text" class="form-control" id="precioConDescuento" readonly>
+                                        <small class="text-muted">Precio final por unidad</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="{{ form.margen_ganancia.id_for_label }}" class="form-label">Margen de Ganancia (%)</label>
+                                        {{ form.margen_ganancia }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Precio Sugerido</label>
+                                        <input type="text" class="form-control" id="precioSugerido" readonly>
+                                        <small class="text-muted">Precio de venta sugerido</small>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="{{ form.tipo_venta.id_for_label }}" class="form-label">Tipo de Venta</label>
+                                        {{ form.tipo_venta }}
+                                        <small class="text-muted">Unidad o Promoción</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="{{ form.precio_venta_final.id_for_label }}" class="form-label">Precio Final de Venta</label>
+                                        {{ form.precio_venta_final }}
+                                        <small class="text-muted">Ajuste manual del precio final</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.descripcion.id_for_label }}" class="form-label">Descripción</label>
+                            {{ form.descripcion }}
+                        </div>
+
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if messages %}
+                        <div class="alert alert-success">
+                            {% for message in messages %}
+                            {{ message }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                            <a href="{% url 'lista_productos' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Referencias a los elementos del formulario
+    const tipoCompraSelect = document.getElementById('{{ form.tipo_compra.id_for_label }}');
+    const unidadesContainer = document.getElementById('unidadesContainer');
+    const unidadesInput = document.getElementById('{{ form.unidades_por_paquete.id_for_label }}');
+    const precioCompraInput = document.getElementById('{{ form.precio_compra_paquete.id_for_label }}');
+    const descuentoInput = document.getElementById('{{ form.descuento_compra.id_for_label }}');
+    const margenInput = document.getElementById('{{ form.margen_ganancia.id_for_label }}');
+    const precioVentaInput = document.getElementById('{{ form.precio_venta_final.id_for_label }}');
+
+    // Elementos para mostrar los cálculos
+    const precioUnitarioDisplay = document.getElementById('precioUnitario');
+    const precioConDescuentoDisplay = document.getElementById('precioConDescuento');
+    const precioSugeridoDisplay = document.getElementById('precioSugerido');
+
+    function toggleUnidadesPorPaquete() {
+        // Mostrar/ocultar campo de unidades según tipo de compra
+        if (tipoCompraSelect.value === 'U') {
+            unidadesContainer.style.display = 'none';
+            unidadesInput.value = '1';
+        } else {
+            unidadesContainer.style.display = 'block';
+        }
+        calcularPrecios();
+    }
+
+    function calcularPrecios() {
+        // Obtener valores
+        const precioCompra = parseFloat(precioCompraInput.value) || 0;
+        const unidades = parseFloat(unidadesInput.value) || 1;
+        const descuento = parseFloat(descuentoInput.value) || 0;
+        const margen = parseFloat(margenInput.value) || 0;
+
+        // 1. Calcular precio unitario
+        let precioUnitario;
+        if (tipoCompraSelect.value === 'U') {
+            precioUnitario = precioCompra;
+        } else {
+            precioUnitario = precioCompra / unidades;
+        }
+        precioUnitarioDisplay.value = `$${precioUnitario.toFixed(2)}`;
+
+        // 2. Aplicar descuento
+        const precioConDescuento = precioUnitario * (1 - descuento/100);
+        precioConDescuentoDisplay.value = `$${precioConDescuento.toFixed(2)}`;
+
+        // 3. Calcular precio sugerido con margen
+        const precioSugerido = precioConDescuento * (1 + margen/100);
+        precioSugeridoDisplay.value = `$${precioSugerido.toFixed(2)}`;
+
+        // 4. Actualizar precio de venta sugerido
+        precioVentaInput.value = precioSugerido.toFixed(2);
+    }
+
+    // Event listeners
+    tipoCompraSelect.addEventListener('change', toggleUnidadesPorPaquete);
+    
+    // Calcular precios cuando cambie cualquier valor
+    [precioCompraInput, unidadesInput, descuentoInput, margenInput].forEach(input => {
+        input.addEventListener('input', calcularPrecios);
+    });
+
+    // Inicialización
+    toggleUnidadesPorPaquete();
+});
+</script>
+{% endblock %}
+{% endblock %}
