@@ -72,15 +72,15 @@
                             <td>{{ producto.subcategoria.categoria }}</td>
                             <td>{{ producto.subcategoria }}</td>
                             <td>{{ producto.proveedor }}</td>
-                            <td>${{ producto.precio_compra_unitario|floatformat:2 }}</td>
-                            <td>
+                            <td class="text-end">${{ producto.precio_compra_unitario|floatformat:2 }}</td>
+                            <td class="text-end">
                                 {% if producto.descuento_compra %}
                                     <span class="text-success">{{ producto.descuento_compra }}%</span>
                                 {% else %}
                                     <span class="text-muted">0%</span>
                                 {% endif %}
                             </td>
-                            <td class="fw-bold">${{ producto.precio_venta_final|floatformat:2 }}</td>
+                            <td class="text-end fw-bold">${{ producto.precio_venta_final|floatformat:2 }}</td>
                             <td>
                                 {% if producto.activo %}
                                 <span class="badge bg-success">Activo</span>
