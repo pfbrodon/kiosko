@@ -103,6 +103,63 @@
                             </div>
                         </div>
 
+                        <!-- Control de Stock -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Control de Stock</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="{{ form.cantidad_stock.id_for_label }}" class="form-label fw-bold">
+                                            <i class="fas fa-cubes me-2"></i>Stock Actual
+                                        </label>
+                                        {{ form.cantidad_stock }}
+                                        {% if form.cantidad_stock.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.cantidad_stock.errors|join:", " }}
+                                        </div>
+                                        {% endif %}
+                                        <div class="form-text">Cantidad actual disponible</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="{{ form.stock_minimo.id_for_label }}" class="form-label fw-bold">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>Stock Mínimo
+                                        </label>
+                                        {{ form.stock_minimo }}
+                                        {% if form.stock_minimo.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.stock_minimo.errors|join:", " }}
+                                        </div>
+                                        {% endif %}
+                                        <div class="form-text">Cantidad mínima antes de alertar</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estado del Producto -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-toggle-on me-2"></i>Estado del Producto</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="form-check form-switch">
+                                            {{ form.activo }}
+                                            <label class="form-check-label ms-2" for="{{ form.activo.id_for_label }}">
+                                                Producto Activo
+                                            </label>
+                                        </div>
+                                        <div class="form-text mt-2">
+                                            Si está desactivado, el producto no aparecerá en las listas de venta
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="{{ form.descripcion.id_for_label }}" class="form-label">Descripción</label>
                             {{ form.descripcion }}
@@ -142,6 +199,7 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
@@ -211,5 +269,4 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleUnidadesPorPaquete();
 });
 </script>
-{% endblock %}
 {% endblock %}

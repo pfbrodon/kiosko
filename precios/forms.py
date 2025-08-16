@@ -5,11 +5,10 @@ class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
         fields = [
+            'nombre',
+            'marca',
             'subcategoria',
             'proveedor',
-            'marca',
-            'nombre',
-            'descripcion',
             'tipo_compra',
             'unidades_por_paquete',
             'precio_compra_paquete',
@@ -17,6 +16,9 @@ class ProductoForm(forms.ModelForm):
             'tipo_venta',
             'margen_ganancia',
             'precio_venta_final',
+            'cantidad_stock',  # Nuevo campo
+            'stock_minimo',    # Nuevo campo
+            'activo'
         ]
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows': 3}),
@@ -24,13 +26,28 @@ class ProductoForm(forms.ModelForm):
             'descuento_compra': forms.NumberInput(attrs={'step': '0.01'}),
             'margen_ganancia': forms.NumberInput(attrs={'step': '0.01'}),
             'precio_venta_final': forms.NumberInput(attrs={'step': '0.01'}),
+            'cantidad_stock': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'placeholder': 'Cantidad actual en stock'
+            }),
+            'stock_minimo': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'placeholder': 'Stock mínimo para alertas'
+            }),
+            'activo': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+                'role': 'switch'
+            })
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Agregar clases de Bootstrap
+        # Agregar clases de Bootstrap excepto para el campo activo
         for field in self.fields:
-            self.fields[field].widget.attrs.update({'class': 'form-control'})
+            if field != 'activo':  # Excluir el campo activo
+                self.fields[field].widget.attrs.update({'class': 'form-control'})
             
 class SubcategoriaForm(forms.ModelForm):
     class Meta:

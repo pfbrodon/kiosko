@@ -16,19 +16,26 @@ def crear_producto(request):
     if request.method == 'POST':
         form = ProductoForm(request.POST)
         if form.is_valid():
-            form.save()
+            producto = form.save(commit=False)
+            # La verificación de alerta_stock se maneja en el modelo
+            producto.save()
             messages.success(request, 'Producto creado exitosamente.')
             return redirect('lista_productos')
     else:
         form = ProductoForm()
-    return render(request, 'crear_producto.html', {'form': form})
+    return render(request, 'crear_producto.html', {
+        'form': form,
+        'editing': False
+    })
 
 def editar_producto(request, pk):
     producto = get_object_or_404(Producto, pk=pk)
     if request.method == 'POST':
         form = ProductoForm(request.POST, instance=producto)
         if form.is_valid():
-            form.save()
+            producto = form.save(commit=False)
+            # La verificación de alerta_stock se maneja en el modelo
+            producto.save()
             messages.success(request, 'Producto actualizado exitosamente.')
             return redirect('lista_productos')
     else:
