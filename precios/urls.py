@@ -7,6 +7,7 @@ urlpatterns = [
     path('productos/<int:pk>/editar/', views.editar_producto, name='editar_producto'),
     path('productos/crear/', views.crear_producto, name='crear_producto'),
     path('productos/<int:pk>/eliminar/', views.eliminar_producto, name='eliminar_producto'),
+    path('productos/<int:pk>/movimientos/', views.movimientos_stock, name='movimientos_stock'),
     path('subcategorias/', views.lista_subcategorias, name='lista_subcategorias'),
     path('subcategorias/crear/', views.crear_subcategoria, name='crear_subcategoria'),
     path('categorias/', views.lista_categorias, name='lista_categorias'),
@@ -17,5 +18,6 @@ urlpatterns = [
     path('marca/crear/', views.crear_marca, name='crear_marca'),
     path('marcas/<int:pk>/editar/', views.editar_marca, name='editar_marca'),
     path('marcas/<int:pk>/eliminar/', views.eliminar_marca, name='eliminar_marca'),
+    
     
 ]

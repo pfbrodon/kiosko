@@ -1,5 +1,5 @@
 from django import forms
-from .models import Categoria, Subcategoria, Proveedor, Producto, Marca
+from .models import Categoria, Subcategoria, Proveedor, Producto, Marca, MovimientoStock
 
 class ProductoForm(forms.ModelForm):
     class Meta:
@@ -130,5 +130,23 @@ class MarcaForm(forms.ModelForm):
             }),
             'activo': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'
+            })
+        }
+        
+class MovimientoStockForm(forms.ModelForm):
+    class Meta:
+        model = MovimientoStock
+        fields = ['tipo', 'cantidad', 'observacion']
+        widgets = {
+            'tipo': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'cantidad': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1'
+            }),
+            'observacion': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Motivo del movimiento'
             })
         }

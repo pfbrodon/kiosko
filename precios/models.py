@@ -185,3 +185,29 @@ class Producto(models.Model):
             return "Stock bajo"
         else:
             return "En stock"
+
+
+class MovimientoStock(models.Model):
+    TIPO_MOVIMIENTO = [
+        ('E', 'Entrada'),
+        ('S', 'Salida')
+    ]
+
+    producto = models.ForeignKey(
+        Producto, 
+        on_delete=models.CASCADE,
+        related_name='movimientos'
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+    tipo = models.CharField(
+        max_length=1, 
+        choices=TIPO_MOVIMIENTO
+    )
+    cantidad = models.PositiveIntegerField()
+    observacion = models.CharField(
+        max_length=255, 
+        blank=True
+    )
+
+    class Meta:
+        ordering = ['-fecha']

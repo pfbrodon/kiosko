@@ -106,11 +106,20 @@
                             </td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="{% url 'editar_producto' producto.id %}" class="btn btn-sm btn-warning">
+                                    <a href="{% url 'editar_producto' producto.id %}" 
+                                       class="btn btn-sm btn-warning"
+                                       title="Editar producto">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-danger" 
-                                            onclick="confirmarEliminar({{ producto.id }}, '{{ producto.nombre|escapejs }}')">
+                                    <a href="{% url 'movimientos_stock' producto.id %}"
+                                       class="btn btn-sm btn-info"
+                                       title="Movimientos de stock">
+                                        <i class="fas fa-boxes"></i>
+                                    </a>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-danger" 
+                                            onclick="confirmarEliminar({{ producto.id }}, '{{ producto.nombre|escapejs }}')"
+                                            title="Eliminar producto">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>

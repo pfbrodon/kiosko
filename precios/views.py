@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Producto, Categoria, Proveedor, Subcategoria, Marca
-from .forms import ProductoForm, ProductoSearchForm, SubcategoriaForm, CategoriaForm, ProveedorForm, MarcaForm
+from .models import Producto, Categoria, Proveedor, Subcategoria, Marca, MovimientoStock
+from .forms import ProductoForm, ProductoSearchForm, SubcategoriaForm, CategoriaForm, ProveedorForm, MarcaForm, MovimientoStockForm
 
 # Create your views here.
 
@@ -173,3 +173,41 @@ def eliminar_marca(request, pk):
         marca.delete()
         messages.success(request, f'La marca {marca.nombre} ha sido eliminada.')
     return redirect('lista_marcas')
+
+#--------------------------------MOVIMIENTOS DE STOCK---------------------------------
+
+def movimientos_stock(request, pk):
+    producto = get_object_or_404(Producto, pk=pk)
+    movimientos = MovimientoStock.objects.filter(producto=producto)
+    
+    if request.method == 'POST':
+        form = MovimientoStockForm(request.POST)
+        if form.is_valid():
+            movimiento = form.save(commit=False)
+            movimiento.producto = producto
+            
+            # Validar y actualizar stock
+            cantidad = form.cleaned_data['cantidad']
+            if movimiento.tipo == 'S' and cantidad > producto.cantidad_stock:
+                messages.error(request, 'No hay suficiente stock disponible')
+                return redirect('movimientos_stock', pk=pk)
+            
+            # Actualizar stock
+            if movimiento.tipo == 'E':
+                producto.cantidad_stock += cantidad
+            else:
+                producto.cantidad_stock -= cantidad
+            
+            movimiento.save()
+            producto.save()
+            
+            messages.success(request, f'Stock actualizado: {producto.cantidad_stock} unidades')
+            return redirect('movimientos_stock', pk=pk)
+    else:
+        form = MovimientoStockForm()
+    
+    return render(request, 'movimientos_stock.html', {
+        'producto': producto,
+        'movimientos': movimientos,
+        'form': form
+    })

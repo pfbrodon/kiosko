@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <!-- Información del Producto -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-box me-2"></i>{{ producto.nombre }}
+                    </h5>
+                    <a href="{% url 'lista_productos' %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Volver a Productos
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Stock Actual:</strong> 
+                                <span class="h4 {% if producto.alerta_stock %}text-danger{% endif %}">
+                                    {{ producto.cantidad_stock }}
+                                </span>
+                            </p>
+                            <p><strong>Stock Mínimo:</strong> {{ producto.stock_minimo }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Última actualización:</strong> {{ producto.fecha_ultima_compra|date:"d/m/Y H:i" }}</p>
+                            <p><strong>Estado:</strong> 
+                                <span class="badge {% if producto.alerta_stock %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ producto.estado_stock }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario de Movimiento -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Nuevo Movimiento</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            {{ form.as_div }}
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Registrar Movimiento
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Historial de Movimientos -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Historial de Movimientos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th class="text-end">Cantidad</th>
+                                    <th>Observación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movimiento in movimientos %}
+                                <tr>
+                                    <td>{{ movimiento.fecha|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <span class="badge {% if movimiento.tipo == 'E' %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ movimiento.get_tipo_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">{{ movimiento.cantidad }}</td>
+                                    <td>{{ movimiento.observacion }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No hay movimientos registrados</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
