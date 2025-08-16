@@ -125,6 +125,20 @@ class Producto(models.Model):
         help_text="Precio final de venta al público"
     )
 
+    # Información de stock
+    cantidad_stock = models.PositiveIntegerField(
+        default=0,
+        help_text="Cantidad actual en stock"
+    )
+    stock_minimo = models.PositiveIntegerField(
+        default=1,
+        help_text="Cantidad mínima antes de necesitar reposición"
+    )
+    alerta_stock = models.BooleanField(
+        default=False,
+        help_text="Indica si se debe alertar cuando el stock está bajo"
+    )
+
     # Trazabilidad
     fecha_ultima_compra = models.DateTimeField(auto_now=True)
     activo = models.BooleanField(default=True)
@@ -138,7 +152,7 @@ class Producto(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Calcula los precios antes de guardar.
+        Calcula los precios antes de guardar y verifica el estado del stock.
         """
         # Calcula precio unitario de compra
         if self.tipo_compra in ['C', 'B']:
@@ -155,4 +169,19 @@ class Producto(models.Model):
         # Calcula precio de venta sugerido
         self.precio_venta_sugerido = self.precio_compra_unitario * (1 + (self.margen_ganancia / Decimal(100)))
         
+        # Actualiza el estado de la alerta de stock
+        self.alerta_stock = self.cantidad_stock <= self.stock_minimo
+        
         super().save(*args, **kwargs)
+
+    @property
+    def estado_stock(self):
+        """
+        Retorna el estado del stock como texto.
+        """
+        if self.cantidad_stock <= 0:
+            return "Sin stock"
+        elif self.cantidad_stock <= self.stock_minimo:
+            return "Stock bajo"
+        else:
+            return "En stock"

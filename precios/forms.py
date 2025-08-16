@@ -45,7 +45,8 @@ class ProductoSearchForm(forms.Form):
     ESTADO_CHOICES = [
         ('', 'Todos'),
         ('1', 'Activos'),
-        ('0', 'Inactivos')
+        ('0', 'Inactivos'),
+        ('B', 'Stock Bajo')
     ]
     
     categoria = forms.ModelChoiceField(

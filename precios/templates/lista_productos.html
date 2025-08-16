@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-xl mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Listado de Productos</h2>
         <a href="{% url 'crear_producto' %}" class="btn btn-primary">
@@ -57,9 +57,11 @@
                             <th>Categoría</th>
                             <th>Subcategoría</th>
                             <th>Proveedor</th>
-                            <th>Precio Compra</th>
+                            <th>Stock</th>
+                            <th>Mínimo</th>
+                            <th>P Compra</th>
                             <th>Descuento</th>
-                            <th>Precio Venta</th>
+                            <th>PvP</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
@@ -70,8 +72,18 @@
                             <td>{{ producto.nombre }}</td>
                             <td>{{ producto.marca|default:"Sin marca" }}</td>
                             <td>{{ producto.subcategoria.categoria }}</td>
-                            <td>{{ producto.subcategoria }}</td>
+                            <td>{{ producto.subcategoria.nombre }}</td>
                             <td>{{ producto.proveedor }}</td>
+                            <!-- Columnas de stock -->
+                            <td class="text-end">
+                                {% if producto.alerta_stock %}
+                                    <span class="text-danger fw-bold">{{ producto.cantidad_stock }}</span>
+                                {% else %}
+                                    <span>{{ producto.cantidad_stock }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ producto.stock_minimo }}</td>
+                            <!-- Columnas existentes -->
                             <td class="text-end">${{ producto.precio_compra_unitario|floatformat:2 }}</td>
                             <td class="text-end">
                                 {% if producto.descuento_compra %}
@@ -83,9 +95,13 @@
                             <td class="text-end fw-bold">${{ producto.precio_venta_final|floatformat:2 }}</td>
                             <td>
                                 {% if producto.activo %}
-                                <span class="badge bg-success">Activo</span>
+                                    {% if producto.alerta_stock %}
+                                        <span class="badge bg-warning">Stock Bajo</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% endif %}
                                 {% else %}
-                                <span class="badge bg-danger">Inactivo</span>
+                                    <span class="badge bg-danger">Inactivo</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -102,7 +118,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="10" class="text-center">No se encontraron productos</td>
+                            <td colspan="12" class="text-center">No se encontraron productos</td>
                         </tr>
                         {% endfor %}
                     </tbody>

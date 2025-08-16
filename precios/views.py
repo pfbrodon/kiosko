@@ -62,6 +62,8 @@ def lista_productos(request):
             productos = productos.filter(activo=estado)
         if form.cleaned_data['busqueda']:
             productos = productos.filter(nombre__icontains=form.cleaned_data['busqueda'])
+        if form.cleaned_data.get('estado') == 'B':
+            productos = productos.filter(alerta_stock=True)
     
     return render(request, 'lista_productos.html', {
         'productos': productos,
