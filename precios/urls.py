@@ -17,5 +17,5 @@ urlpatterns = [
     path('marca/crear/', views.crear_marca, name='crear_marca'),
     path('marcas/<int:pk>/editar/', views.editar_marca, name='editar_marca'),
     path('marcas/<int:pk>/eliminar/', views.eliminar_marca, name='eliminar_marca'),
-    
+    path('productos/exportar-pdf/', views.exportar_productos_pdf, name='exportar_productos_pdf'),
 ]

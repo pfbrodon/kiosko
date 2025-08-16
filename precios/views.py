@@ -2,7 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import Producto, Categoria, Proveedor, Subcategoria, Marca
 from .forms import ProductoForm, ProductoSearchForm, SubcategoriaForm, CategoriaForm, ProveedorForm, MarcaForm
-
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from datetime import datetime
 # Create your views here.
 
 def home(request):
@@ -164,3 +170,100 @@ def eliminar_marca(request, pk):
         marca.delete()
         messages.success(request, f'La marca {marca.nombre} ha sido eliminada.')
     return redirect('lista_marcas')
+
+#---------------------------------PDF EXPORT---------------------------------
+
+def exportar_productos_pdf(request):
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="lista_productos.pdf"'
+    
+    # Usar orientación vertical
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=letter,
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=30,
+        bottomMargin=30
+    )
+    
+    elements = []
+    
+    # Obtener los productos
+    productos = Producto.objects.all().order_by('nombre')
+    
+    # Estilos para el texto
+    styles = getSampleStyleSheet()
+    styleN = styles["BodyText"]
+    
+    # Datos para la tabla con menos columnas
+    data = [[
+        'Nombre',
+        'Marca',
+        'Subcategoría',
+        'Proveedor',
+        'Precio',
+        'Estado'
+    ]]
+    
+    # Agregar datos de productos (omitiendo categoría, precio compra y descuento)
+    for producto in productos:
+        data.append([
+            Paragraph(producto.nombre, styleN),
+            Paragraph(str(producto.marca) if producto.marca else "Sin marca", styleN),
+            Paragraph(str(producto.subcategoria), styleN),
+            Paragraph(str(producto.proveedor), styleN),
+            f"${producto.precio_venta_final:.2f}",
+            "Activo" if producto.activo else "Inactivo"
+        ])
+    
+    # Definir anchos de columna (en porcentaje del ancho disponible)
+    col_widths = [
+        doc.width * 0.25,  # Nombre
+        doc.width * 0.15,  # Marca
+        doc.width * 0.20,  # Subcategoría
+        doc.width * 0.20,  # Proveedor
+        doc.width * 0.10,  # Precio Venta
+        doc.width * 0.10   # Estado
+    ]
+    
+    # Crear tabla con los anchos definidos
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+    
+    # Estilo de la tabla
+    table.setStyle(TableStyle([
+        # Estilo del encabezado
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        
+        # Estilo del contenido
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        
+        # Alineación especial para precios
+        ('ALIGN', (4, 1), (4, -1), 'RIGHT'),  # Precio alineado a la derecha
+        
+        # Espaciado
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        
+        # Separación entre filas
+        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.lightgrey]),
+    ]))
+    
+    # Agregar fecha de generación
+    fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+    elementos_header = [
+        Paragraph(f"Lista de Productos - Generado: {fecha}", styles['Heading1']),
+        table
+    ]
+    
+    doc.build(elementos_header)
+    return response
