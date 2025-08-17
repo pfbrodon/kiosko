@@ -39,23 +39,16 @@
                     <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Registrar Recreo</h5>
                 </div>
                 <div class="card-body">
-                    {% if numeros_recreo_disponibles %}
+                    {% if proximo_recreo %}
                         <form method="post">
                             {% csrf_token %}
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Número de Recreo</label>
-                                <select name="numero" class="form-select">
-                                    {% for num in numeros_recreo_disponibles %}
-                                        <option value="{{ num }}">Recreo {{ num }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Monto</label>
+                                <label class="form-label fw-bold">Recreo {{ proximo_recreo }}</label>
+                                <input type="hidden" name="numero" value="{{ proximo_recreo }}">
                                 {{ recreo_form.monto }}
                             </div>
                             <button type="submit" name="agregar_recreo" class="btn btn-primary">
-                                <i class="fas fa-plus me-2"></i>Agregar Recreo
+                                <i class="fas fa-plus me-2"></i>Agregar Recreo {{ proximo_recreo }}
                             </button>
                         </form>
                     {% else %}
@@ -63,6 +56,37 @@
                             Ya se registraron todos los recreos
                         </div>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- Resumen de Recreos -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Recreos Registrados</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Recreo</th>
+                                    <th class="text-end">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for recreo in recreos %}
+                                <tr>
+                                    <td>Recreo {{ recreo.numero }}</td>
+                                    <td class="text-end">${{ recreo.monto|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" class="text-center">No hay recreos registrados</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

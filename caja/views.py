@@ -55,6 +55,16 @@ def registrar_movimientos(request, caja_id):
     if not saldo_general:
         saldo_general = SaldoGeneral.objects.create()
     
+    # Obtener el próximo recreo disponible
+    recreos = Recreo.objects.filter(caja=caja).order_by('numero')
+    proximo_recreo = 1
+    if recreos.exists():
+        ultimo_recreo = recreos.last()
+        if ultimo_recreo.numero < 3:
+            proximo_recreo = ultimo_recreo.numero + 1
+        else:
+            proximo_recreo = None
+    
     if request.method == 'POST':
         if 'agregar_recreo' in request.POST:
             form = RecreoForm(request.POST)
@@ -113,12 +123,10 @@ def registrar_movimientos(request, caja_id):
         'caja': caja,
         'saldo_general': saldo_general,
         'recreo_form': RecreoForm(),
-        'evento_form': EventoEspecialForm(),  # Siempre disponible
-        'pago_form': PagoProveedorForm() if caja.nivel == 'S' else None,
-        'recreos': Recreo.objects.filter(caja=caja),
         'eventos': EventoEspecial.objects.filter(caja=caja),
         'pagos': PagoProveedor.objects.filter(caja=caja) if caja.nivel == 'S' else None,
-        'numeros_recreo_disponibles': [i for i in range(1, 4) if not Recreo.objects.filter(caja=caja, numero=i).exists()]
+        'recreos': recreos,
+        'proximo_recreo': proximo_recreo,
     }
     
     return render(request, 'registrar_movimientos.html', context)
