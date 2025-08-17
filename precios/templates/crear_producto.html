@@ -109,22 +109,26 @@
                                 <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Control de Stock</h5>
                             </div>
                             <div class="card-body">
-                                <div class="row">
+                                <div class="row mb-3">
                                     <div class="col-md-6">
-                                        <label for="{{ form.cantidad_stock.id_for_label }}" class="form-label fw-bold">
-                                            <i class="fas fa-cubes me-2"></i>Stock Actual
-                                        </label>
-                                        {{ form.cantidad_stock }}
-                                        {% if form.cantidad_stock.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.cantidad_stock.errors|join:", " }}
-                                        </div>
+                                        {% if editing %}
+                                            <label class="form-label fw-bold">Stock Actual</label>
+                                            <div class="form-control-plaintext h4">{{ producto.cantidad_stock }}</div>
+                                        {% else %}
+                                            <label for="{{ form.stock_inicial.id_for_label }}" class="form-label fw-bold">
+                                                Stock Inicial
+                                            </label>
+                                            {{ form.stock_inicial }}
+                                            {% if form.stock_inicial.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.stock_inicial.errors|join:", " }}
+                                            </div>
+                                            {% endif %}
                                         {% endif %}
-                                        <div class="form-text">Cantidad actual disponible</div>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="{{ form.stock_minimo.id_for_label }}" class="form-label fw-bold">
-                                            <i class="fas fa-exclamation-triangle me-2"></i>Stock Mínimo
+                                            Stock Mínimo
                                         </label>
                                         {{ form.stock_minimo }}
                                         {% if form.stock_minimo.errors %}
@@ -132,7 +136,6 @@
                                             {{ form.stock_minimo.errors|join:", " }}
                                         </div>
                                         {% endif %}
-                                        <div class="form-text">Cantidad mínima antes de alertar</div>
                                     </div>
                                 </div>
                             </div>

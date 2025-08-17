@@ -17,8 +17,19 @@ def crear_producto(request):
         form = ProductoForm(request.POST)
         if form.is_valid():
             producto = form.save(commit=False)
-            # La verificación de alerta_stock se maneja en el modelo
+            stock_inicial = form.cleaned_data.get('stock_inicial', 0)
+            producto.cantidad_stock = stock_inicial
             producto.save()
+            
+            # Crear el movimiento de stock inicial si es mayor a 0
+            if stock_inicial > 0:
+                MovimientoStock.objects.create(
+                    producto=producto,
+                    tipo='E',
+                    cantidad=stock_inicial,
+                    observacion='Stock inicial'
+                )
+            
             messages.success(request, 'Producto creado exitosamente.')
             return redirect('lista_productos')
     else:
@@ -33,9 +44,7 @@ def editar_producto(request, pk):
     if request.method == 'POST':
         form = ProductoForm(request.POST, instance=producto)
         if form.is_valid():
-            producto = form.save(commit=False)
-            # La verificación de alerta_stock se maneja en el modelo
-            producto.save()
+            form.save()
             messages.success(request, 'Producto actualizado exitosamente.')
             return redirect('lista_productos')
     else:

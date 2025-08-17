@@ -2,6 +2,15 @@ from django import forms
 from .models import Categoria, Subcategoria, Proveedor, Producto, Marca, MovimientoStock
 
 class ProductoForm(forms.ModelForm):
+    stock_inicial = forms.IntegerField(
+        min_value=0,
+        required=True,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Cantidad inicial en stock'
+        })
+    )
+
     class Meta:
         model = Producto
         fields = [
@@ -16,8 +25,8 @@ class ProductoForm(forms.ModelForm):
             'tipo_venta',
             'margen_ganancia',
             'precio_venta_final',
-            'cantidad_stock',  # Nuevo campo
-            'stock_minimo',    # Nuevo campo
+            'stock_inicial',  # Reemplazamos cantidad_stock por stock_inicial
+            'stock_minimo',
             'activo'
         ]
         widgets = {
@@ -26,10 +35,10 @@ class ProductoForm(forms.ModelForm):
             'descuento_compra': forms.NumberInput(attrs={'step': '0.01'}),
             'margen_ganancia': forms.NumberInput(attrs={'step': '0.01'}),
             'precio_venta_final': forms.NumberInput(attrs={'step': '0.01'}),
-            'cantidad_stock': forms.NumberInput(attrs={
+            'stock_inicial': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'min': '0',
-                'placeholder': 'Cantidad actual en stock'
+                'placeholder': 'Cantidad inicial en stock'
             }),
             'stock_minimo': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -44,6 +53,13 @@ class ProductoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        instance = kwargs.get('instance')
+        if instance:
+            # Si estamos editando, deshabilitamos el campo stock_inicial
+            self.fields['stock_inicial'].widget.attrs['disabled'] = True
+            self.fields['stock_inicial'].required = False
+            # Establecemos el valor inicial del campo
+            self.fields['stock_inicial'].initial = instance.cantidad_stock
         # Agregar clases de Bootstrap excepto para el campo activo
         for field in self.fields:
             if field != 'activo':  # Excluir el campo activo
