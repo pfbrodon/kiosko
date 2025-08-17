@@ -4,19 +4,14 @@ from .models import CajaDiaria, Recreo, EventoEspecial, PagoProveedor
 class InicioCajaForm(forms.ModelForm):
     class Meta:
         model = CajaDiaria
-        fields = ['fecha', 'turno', 'nivel', 'tiene_evento_especial', 'descripcion_evento']
+        fields = ['fecha', 'turno', 'nivel']
         widgets = {
             'fecha': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
             }),
             'turno': forms.Select(attrs={'class': 'form-select'}),
-            'nivel': forms.Select(attrs={'class': 'form-select'}),
-            'tiene_evento_especial': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'descripcion_evento': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Descripción del evento especial'
-            })
+            'nivel': forms.Select(attrs={'class': 'form-select'})
         }
 
 class RecreoForm(forms.ModelForm):

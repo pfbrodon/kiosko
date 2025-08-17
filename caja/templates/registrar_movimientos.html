@@ -66,20 +66,23 @@
                 </div>
             </div>
 
-            {% if caja.tiene_evento_especial and evento_form %}
-            <!-- Formulario de Evento Especial -->
+            <!-- Botón para habilitar evento especial -->
             <div class="card mb-4">
                 <div class="card-header bg-warning">
                     <h5 class="mb-0">
-                        <i class="fas fa-star me-2"></i>{{ caja.descripcion_evento }}
+                        <i class="fas fa-star me-2"></i>Evento Especial
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="eventoForm">
                         {% csrf_token %}
                         <div class="mb-3">
+                            <label class="form-label fw-bold">Descripción</label>
+                            <input type="text" name="descripcion_evento" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label fw-bold">Monto</label>
-                            {{ evento_form.monto }}
+                            <input type="number" name="monto_evento" class="form-control" step="0.01" min="0" required>
                         </div>
                         <button type="submit" name="agregar_evento" class="btn btn-warning">
                             <i class="fas fa-plus me-2"></i>Registrar Evento
@@ -87,7 +90,6 @@
                     </form>
                 </div>
             </div>
-            {% endif %}
         </div>
 
         <!-- Panel de Egresos y Resumen -->

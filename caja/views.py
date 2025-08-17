@@ -52,6 +52,8 @@ def iniciar_caja(request):
 def registrar_movimientos(request, caja_id):
     caja = get_object_or_404(CajaDiaria, id=caja_id)
     saldo_general = SaldoGeneral.objects.first()
+    if not saldo_general:
+        saldo_general = SaldoGeneral.objects.create()
     
     if request.method == 'POST':
         if 'agregar_recreo' in request.POST:
@@ -69,16 +71,20 @@ def registrar_movimientos(request, caja_id):
                     messages.error(request, e.messages[0])
             return redirect('caja:registrar_movimientos', caja_id=caja.id)
         
-        elif 'agregar_evento' in request.POST and caja.tiene_evento_especial:
-            form = EventoEspecialForm(request.POST)
-            if form.is_valid():
-                evento = form.save(commit=False)
-                evento.caja = caja
-                evento.save()
-                # Actualizar saldo parcial
-                caja.saldo_parcial += evento.monto
-                caja.save()
-                messages.success(request, 'Evento especial registrado correctamente')
+        elif 'agregar_evento' in request.POST:
+            descripcion = request.POST.get('descripcion_evento')
+            monto = Decimal(request.POST.get('monto_evento', '0'))
+            
+            evento = EventoEspecial.objects.create(
+                caja=caja,
+                descripcion=descripcion,
+                monto=monto
+            )
+            
+            caja.saldo_parcial += monto
+            caja.save()
+            
+            messages.success(request, 'Evento especial registrado correctamente')
             return redirect('caja:registrar_movimientos', caja_id=caja.id)
         
         elif 'agregar_pago' in request.POST and caja.nivel == 'S':
@@ -107,7 +113,7 @@ def registrar_movimientos(request, caja_id):
         'caja': caja,
         'saldo_general': saldo_general,
         'recreo_form': RecreoForm(),
-        'evento_form': EventoEspecialForm() if caja.tiene_evento_especial else None,
+        'evento_form': EventoEspecialForm(),  # Siempre disponible
         'pago_form': PagoProveedorForm() if caja.nivel == 'S' else None,
         'recreos': Recreo.objects.filter(caja=caja),
         'eventos': EventoEspecial.objects.filter(caja=caja),
@@ -115,5 +121,4 @@ def registrar_movimientos(request, caja_id):
         'numeros_recreo_disponibles': [i for i in range(1, 4) if not Recreo.objects.filter(caja=caja, numero=i).exists()]
     }
     
-    # Corregida la ruta del template
     return render(request, 'registrar_movimientos.html', context)

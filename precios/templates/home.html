@@ -4,33 +4,37 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="row">
+    <div class="row justify-content-center">
         <!-- Control de Stock -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
+        <div class="col-md-4 mb-4 mx-3">
+            <div class="card text-center">
                 <div class="card-body">
                     <h5 class="card-title">
                         <i class="fas fa-boxes me-2"></i>Control de Stock
                     </h5>
                     <p class="card-text">Gestión de productos, precios y existencias</p>
-                    <a href="{% url 'lista_productos' %}" class="btn btn-primary">
-                        <i class="fas fa-list"></i> Ver Productos
-                    </a>
+                    <div class="d-grid">
+                        <a href="{% url 'lista_productos' %}" class="btn btn-primary">
+                            <i class="fas fa-list"></i> Ver Productos
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Control de Caja -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
+        <div class="col-md-4 mb-4 mx-3">
+            <div class="card text-center">
                 <div class="card-body">
                     <h5 class="card-title">
                         <i class="fas fa-cash-register me-2"></i>Control de Caja
                     </h5>
                     <p class="card-text">Gestión de ingresos y egresos diarios</p>
-                    <a href="{% url 'caja:lista_cajas' %}" class="btn btn-primary">
-                        <i class="fas fa-money-bill-wave"></i> Ver Cajas
-                    </a>
+                    <div class="d-grid">
+                        <a href="{% url 'caja:lista_cajas' %}" class="btn btn-primary">
+                            <i class="fas fa-money-bill-wave"></i> Ver Cajas
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

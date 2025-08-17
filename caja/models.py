@@ -24,8 +24,6 @@ class CajaDiaria(models.Model):
     nivel = models.CharField(max_length=1, choices=NIVELES)
     saldo_inicial = models.DecimalField(max_digits=10, decimal_places=2)
     saldo_parcial = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    tiene_evento_especial = models.BooleanField(default=False)
-    descripcion_evento = models.CharField(max_length=255, blank=True)
     cerrada = models.BooleanField(default=False)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
@@ -57,8 +55,12 @@ class Recreo(models.Model):
 
 class EventoEspecial(models.Model):
     caja = models.ForeignKey(CajaDiaria, on_delete=models.CASCADE)
+    descripcion = models.CharField(max_length=255, blank=True, default='')  # Agregamos blank y default
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.descripcion} - ${self.monto}"
 
 class PagoProveedor(models.Model):
     caja = models.ForeignKey(CajaDiaria, on_delete=models.CASCADE)
