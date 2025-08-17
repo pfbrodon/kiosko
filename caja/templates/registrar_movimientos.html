@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-xl mt-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>{{ caja.get_nivel_display }} - {{ caja.get_turno_display }}</h2>
+            <p class="text-muted mb-0">{{ caja.fecha|date:"d/m/Y" }}</p>
+        </div>
+        <div class="text-end">
+            <h4 class="mb-0">
+                Saldo General: 
+                <span class="{% if saldo_general.monto >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    ${{ saldo_general.monto|floatformat:2 }}
+                </span>
+            </h4>
+            <p class="text-muted mb-0">
+                Saldo Parcial: ${{ caja.saldo_parcial|floatformat:2 }}
+            </p>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- Panel de Ingresos -->
+        <div class="col-md-6">
+            <!-- Formulario de Recreo -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Registrar Recreo</h5>
+                </div>
+                <div class="card-body">
+                    {% if numeros_recreo_disponibles %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Número de Recreo</label>
+                                <select name="numero" class="form-select">
+                                    {% for num in numeros_recreo_disponibles %}
+                                        <option value="{{ num }}">Recreo {{ num }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Monto</label>
+                                {{ recreo_form.monto }}
+                            </div>
+                            <button type="submit" name="agregar_recreo" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Agregar Recreo
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            Ya se registraron todos los recreos
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if caja.tiene_evento_especial and evento_form %}
+            <!-- Formulario de Evento Especial -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>{{ caja.descripcion_evento }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Monto</label>
+                            {{ evento_form.monto }}
+                        </div>
+                        <button type="submit" name="agregar_evento" class="btn btn-warning">
+                            <i class="fas fa-plus me-2"></i>Registrar Evento
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Panel de Egresos y Resumen -->
+        <div class="col-md-6">
+            {% if caja.nivel == 'S' %}
+            <!-- Formulario de Pagos (solo para secundario) -->
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>Registrar Pago
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ pago_form.as_p }}
+                        <button type="submit" name="agregar_pago" class="btn btn-danger">
+                            <i class="fas fa-minus me-2"></i>Registrar Pago
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Resumen de Movimientos -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Resumen</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th>Saldo Inicial:</th>
+                                    <td class="text-end">${{ caja.saldo_inicial|floatformat:2 }}</td>
+                                </tr>
+                                {% for recreo in recreos %}
+                                <tr class="text-success">
+                                    <td>Recreo {{ recreo.numero }}:</td>
+                                    <td class="text-end">+${{ recreo.monto|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% for evento in eventos %}
+                                <tr class="text-success">
+                                    <td>Evento Especial:</td>
+                                    <td class="text-end">+${{ evento.monto|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% if pagos %}
+                                    {% for pago in pagos %}
+                                    <tr class="text-danger">
+                                        <td>{{ pago.proveedor }}:</td>
+                                        <td class="text-end">-${{ pago.monto|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endif %}
+                                <tr class="table-info fw-bold">
+                                    <th>Saldo Parcial:</th>
+                                    <td class="text-end">${{ caja.saldo_parcial|floatformat:2 }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if not caja.cerrada %}
+                    <form method="post" class="mt-3">
+                        {% csrf_token %}
+                        <button type="submit" name="cerrar_caja" class="btn btn-success w-100">
+                            <i class="fas fa-lock me-2"></i>Cerrar Caja
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,24 +3,34 @@
 {% block title %} - Inicio{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
+<div class="container mt-4">
+    <div class="row">
+        <!-- Control de Stock -->
+        <div class="col-md-4 mb-4">
             <div class="card">
                 <div class="card-body">
-                    <h1 class="display-4 mb-4">
-                        <i class="fas fa-store text-primary"></i> 
-                        Sistema de Gestión Kiosko
-                    </h1>
-                    <p class="lead mb-4">
-                        Bienvenido al sistema de gestión de productos y precios
-                    </p>
-                    <div class="d-grid gap-3 col-6 mx-auto">
-                        <a href="{% url 'lista_productos' %}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-box me-2"></i>
-                            Ver Lista de Productos
-                        </a>
-                    </div>
+                    <h5 class="card-title">
+                        <i class="fas fa-boxes me-2"></i>Control de Stock
+                    </h5>
+                    <p class="card-text">Gestión de productos, precios y existencias</p>
+                    <a href="{% url 'lista_productos' %}" class="btn btn-primary">
+                        <i class="fas fa-list"></i> Ver Productos
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control de Caja -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-cash-register me-2"></i>Control de Caja
+                    </h5>
+                    <p class="card-text">Gestión de ingresos y egresos diarios</p>
+                    <a href="{% url 'caja:lista_cajas' %}" class="btn btn-primary">
+                        <i class="fas fa-money-bill-wave"></i> Ver Cajas
+                    </a>
                 </div>
             </div>
         </div>

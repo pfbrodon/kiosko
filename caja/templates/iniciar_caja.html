@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-xl mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Iniciar Nueva Caja</h2>
+        <a href="{% url 'caja:lista_cajas' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <!-- Saldo General -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h3 class="card-title mb-0">
+                Saldo General: 
+                <span class="{% if saldo_general.monto >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    ${{ saldo_general.monto|floatformat:2 }}
+                </span>
+            </h3>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <form method="post" id="inicioCajaForm">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-calendar"></i> Fecha
+                                </label>
+                                {{ form.fecha }}
+                                {% if form.fecha.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.fecha.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-clock"></i> Turno
+                                </label>
+                                {{ form.turno }}
+                                {% if form.turno.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.turno.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-school"></i> Nivel
+                            </label>
+                            {{ form.nivel }}
+                            {% if form.nivel.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.nivel.errors|join:", " }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.tiene_evento_especial }}
+                                <label class="form-check-label fw-bold" for="{{ form.tiene_evento_especial.id_for_label }}">
+                                    <i class="fas fa-star"></i> ¿Hay evento especial?
+                                </label>
+                            </div>
+                            {% if form.tiene_evento_especial.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.tiene_evento_especial.errors|join:", " }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div id="descripcionEventoDiv" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-info-circle"></i> Descripción del Evento
+                                </label>
+                                {{ form.descripcion_evento }}
+                                {% if form.descripcion_evento.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.descripcion_evento.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-play me-2"></i> Iniciar Caja
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const eventoCheck = document.getElementById('{{ form.tiene_evento_especial.id_for_label }}');
+    const descripcionDiv = document.getElementById('descripcionEventoDiv');
+
+    function toggleDescripcion() {
+        descripcionDiv.style.display = eventoCheck.checked ? 'block' : 'none';
+    }
+
+    eventoCheck.addEventListener('change', toggleDescripcion);
+    toggleDescripcion();
+});
+</script>
+{% endblock %}
