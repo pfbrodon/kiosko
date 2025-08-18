@@ -64,6 +64,24 @@ class CajaDiaria(models.Model):
         self.saldo_parcial = self.calcular_saldo_parcial()
         self.save()
 
+    def get_saldo_inicial_display(self):
+        """Retorna el saldo inicial solo si es caja secundaria, sino retorna 0"""
+        return self.saldo_inicial if self.nivel == 'S' else Decimal('0')
+
+    def get_total_ingresos(self):
+        """Retorna el total de ingresos (recreos + eventos especiales)"""
+        from django.db.models import Sum
+        
+        total_recreos = self.recreo_set.aggregate(
+            total=Sum('monto')
+        )['total'] or Decimal('0')
+        
+        total_eventos = self.eventoespecial_set.aggregate(
+            total=Sum('monto')
+        )['total'] or Decimal('0')
+        
+        return total_recreos + total_eventos
+
 class Recreo(models.Model):
     caja = models.ForeignKey(CajaDiaria, on_delete=models.CASCADE)
     numero = models.IntegerField()

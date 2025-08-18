@@ -34,8 +34,21 @@ def lista_cajas(request):
         saldo_general = SaldoGeneral.objects.create()
     
     cajas = CajaDiaria.objects.all()
+    
+    # Calcular saldo parcial total (ingresos de cajas abiertas)
+    saldo_parcial = Decimal('0')
+    for caja in cajas.filter(cerrada=False):
+        if caja.nivel == 'P':
+            saldo_parcial += caja.get_total_ingresos()
+        else:
+            # Para cajas secundarias, considerar también los pagos
+            total_pagos = caja.pagoproveedor_set.aggregate(
+                total=Sum('monto'))['total'] or Decimal('0')
+            saldo_parcial += caja.get_total_ingresos() - total_pagos
+    
     return render(request, 'lista_cajas.html', {
         'saldo_general': saldo_general,
+        'saldo_parcial': saldo_parcial,
         'cajas': cajas
     })
 
@@ -49,7 +62,13 @@ def iniciar_caja(request):
         form = InicioCajaForm(request.POST)
         if form.is_valid():
             caja = form.save(commit=False)
-            caja.saldo_inicial = saldo_general.monto
+            
+            # Solo asignar saldo inicial si es caja secundaria
+            if caja.nivel == 'S':
+                caja.saldo_inicial = saldo_general.monto
+            else:
+                caja.saldo_inicial = Decimal('0')
+                
             try:
                 caja.full_clean()
                 caja.save()

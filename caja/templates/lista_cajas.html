@@ -40,69 +40,50 @@
         <div class="card-body">
             {% if cajas %}
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
+                <table class="table table-striped">
+                    <thead>
                         <tr>
-                            <th>
-                                <i class="fas fa-calendar me-2"></i>Fecha
-                            </th>
-                            <th>
-                                <i class="fas fa-clock me-2"></i>Turno
-                            </th>
-                            <th>
-                                <i class="fas fa-school me-2"></i>Nivel
-                            </th>
-                            <th class="text-end">
-                                <i class="fas fa-money-bill me-2"></i>Saldo Inicial
-                            </th>
-                            <th class="text-end">
-                                <i class="fas fa-calculator me-2"></i>Saldo Parcial
-                            </th>
-                            <th class="text-center">
-                                <i class="fas fa-info-circle me-2"></i>Estado
-                            </th>
-                            <th class="text-center">Acciones</th>
+                            <th>Fecha</th>
+                            <th>Nivel</th>
+                            <th>Turno</th>
+                            <th>Saldo Inicial</th>
+                            <th>Total Ingresos</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for caja in cajas %}
                         <tr>
                             <td>{{ caja.fecha|date:"d/m/Y" }}</td>
+                            <td>{{ caja.get_nivel_display }}</td>
+                            <td>{{ caja.get_turno_display }}</td>
                             <td>
-                                <span class="badge {% if caja.turno == 'M' %}bg-primary{% else %}bg-success{% endif %}">
-                                    {{ caja.get_turno_display }}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge {% if caja.nivel == 'P' %}bg-info{% else %}bg-warning{% endif %}">
-                                    {{ caja.get_nivel_display }}
-                                </span>
-                            </td>
-                            <td class="text-end">${{ caja.saldo_inicial|floatformat:2 }}</td>
-                            <td class="text-end">
-                                <span class="{% if caja.saldo_parcial >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                    ${{ caja.saldo_parcial|floatformat:2 }}
-                                </span>
-                            </td>
-                            <td class="text-center">
-                                {% if caja.cerrada %}
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-lock me-1"></i>Cerrada
-                                    </span>
+                                {% if caja.nivel == 'S' %}
+                                    ${{ caja.saldo_inicial|floatformat:2 }}
                                 {% else %}
-                                    <span class="badge bg-warning">
-                                        <i class="fas fa-clock me-1"></i>En Proceso
-                                    </span>
+                                    $0.00
                                 {% endif %}
                             </td>
-                            <td class="text-center">
+                            <td>${{ caja.get_total_ingresos|floatformat:2 }}</td>
+                            <td>
+                                {% if caja.cerrada %}
+                                    <span class="badge bg-secondary">Cerrada</span>
+                                {% else %}
+                                    <span class="badge bg-success">En Proceso</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if not caja.cerrada %}
-                                    <a href="{% url 'caja:registrar_movimientos' caja.id %}" 
-                                       class="btn btn-sm btn-primary">
-                                        <i class="fas fa-cash-register me-1"></i>Registrar
+                                    <a href="{% url 'caja:registrar_movimientos' caja.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-cash-register"></i> Registrar
                                     </a>
                                 {% endif %}
                             </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No hay cajas registradas</td>
                         </tr>
                         {% endfor %}
                     </tbody>
