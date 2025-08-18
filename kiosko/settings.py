@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'precios',
-    'caja',  # Agregamos la app caja
+    'caja',
+    'usuarios',  # Agregar la app usuarios
 ]
 
 MIDDLEWARE = [
@@ -122,3 +123,8 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configuración de autenticación (sin AUTH_USER_MODEL personalizado)
+LOGIN_URL = 'usuarios:login'
+LOGIN_REDIRECT_URL = 'home'
+LOGOUT_REDIRECT_URL = 'usuarios:login'

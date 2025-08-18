@@ -1,11 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum
-from django.core.exceptions import ValidationError  # Agregamos esta importación
+from django.core.exceptions import ValidationError
+from django.contrib.auth.decorators import login_required
 from decimal import Decimal
 from .models import SaldoGeneral, CajaDiaria, Recreo, EventoEspecial, PagoProveedor
 from .forms import InicioCajaForm, RecreoForm, EventoEspecialForm, PagoProveedorForm
 from django import forms
+from usuarios.decorators import solo_admin, admin_o_encargado
 
 class SaldoGeneralForm(forms.Form):
     monto = forms.DecimalField(
@@ -25,18 +27,19 @@ class SaldoGeneralForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
+@login_required
 def lista_cajas(request):
     saldo_general = SaldoGeneral.objects.first()
     if not saldo_general:
         saldo_general = SaldoGeneral.objects.create()
     
     cajas = CajaDiaria.objects.all()
-    # Corregida la ruta del template
     return render(request, 'lista_cajas.html', {
         'saldo_general': saldo_general,
         'cajas': cajas
     })
 
+@admin_o_encargado
 def iniciar_caja(request):
     saldo_general = SaldoGeneral.objects.first()
     if not saldo_general:
@@ -54,7 +57,6 @@ def iniciar_caja(request):
                 return redirect('caja:registrar_movimientos', caja_id=caja.id)
             except ValidationError as e:
                 messages.error(request, e.messages[0])
-                # Corregida la ruta del template
                 return render(request, 'iniciar_caja.html', {
                     'form': form,
                     'saldo_general': saldo_general
@@ -62,12 +64,12 @@ def iniciar_caja(request):
     else:
         form = InicioCajaForm()
     
-    # Corregida la ruta del template
     return render(request, 'iniciar_caja.html', {
         'form': form,
         'saldo_general': saldo_general
     })
 
+@login_required
 def registrar_movimientos(request, caja_id):
     caja = get_object_or_404(CajaDiaria, id=caja_id)
     saldo_general = SaldoGeneral.objects.first()
@@ -122,17 +124,14 @@ def registrar_movimientos(request, caja_id):
                 pago = form.save(commit=False)
                 pago.caja = caja
                 pago.save()
-                # Actualizar saldo parcial
                 caja.saldo_parcial -= pago.monto
                 caja.save()
                 messages.success(request, 'Pago registrado correctamente')
             return redirect('caja:registrar_movimientos', caja_id=caja.id)
         
         elif 'cerrar_caja' in request.POST:
-            # Actualizar saldo general
             saldo_general.monto += caja.saldo_parcial
             saldo_general.save()
-            # Cerrar caja
             caja.cerrada = True
             caja.save()
             messages.success(request, 'Caja cerrada correctamente')
@@ -150,16 +149,15 @@ def registrar_movimientos(request, caja_id):
     
     return render(request, 'registrar_movimientos.html', context)
 
+@solo_admin
 def limpiar_cajas(request):
     if request.method == 'POST':
         try:
-            # Eliminamos primero las tablas relacionadas
             EventoEspecial.objects.all().delete()
             PagoProveedor.objects.all().delete()
             Recreo.objects.all().delete()
             CajaDiaria.objects.all().delete()
             
-            # Reiniciamos el saldo general
             saldo_general = SaldoGeneral.objects.first()
             if saldo_general:
                 saldo_general.monto = 0
@@ -171,6 +169,7 @@ def limpiar_cajas(request):
     
     return redirect('caja:lista_cajas')
 
+@admin_o_encargado
 def gestionar_saldo_general(request):
     saldo_general = SaldoGeneral.objects.first()
     if not saldo_general:
@@ -186,7 +185,7 @@ def gestionar_saldo_general(request):
                 saldo_general.monto = monto
             elif tipo_operacion == 'sumar':
                 saldo_general.monto += monto
-            else:  # restar
+            else:
                 saldo_general.monto -= monto
 
             saldo_general.save()
