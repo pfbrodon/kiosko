@@ -141,6 +141,7 @@ def registrar_movimientos(request, caja_id):
         'caja': caja,
         'saldo_general': saldo_general,
         'recreo_form': RecreoForm(),
+        'pago_form': PagoProveedorForm(),  # Agregar esta línea
         'eventos': EventoEspecial.objects.filter(caja=caja),
         'pagos': PagoProveedor.objects.filter(caja=caja) if caja.nivel == 'S' else None,
         'recreos': recreos,
