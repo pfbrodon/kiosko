@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">Confirmar Eliminación</h4>
+        </div>
+        <div class="card-body">
+            <p>¿Está seguro que desea eliminar el siguiente pago?</p>
+            <ul class="list-unstyled">
+                <li><strong>Proveedor:</strong> {{ pago.proveedor }}</li>
+                <li><strong>Monto:</strong> ${{ pago.monto }}</li>
+                <li><strong>Descripción:</strong> {{ pago.descripcion }}</li>
+            </ul>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash me-2"></i>Eliminar
+                </button>
+                <a href="{% url 'caja:registrar_movimientos' caja.id %}" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -215,3 +215,40 @@ def gestionar_saldo_general(request):
         'form': form,
         'saldo_general': saldo_general
     })
+
+@login_required
+def editar_pago(request, pago_id):
+    pago = get_object_or_404(PagoProveedor, id=pago_id)
+    caja = pago.caja
+
+    if request.method == 'POST':
+        form = PagoProveedorForm(request.POST, instance=pago)
+        if form.is_valid():
+            form.save()
+            caja.actualizar_saldo_parcial()
+            messages.success(request, 'Pago actualizado correctamente')
+            return redirect('caja:registrar_movimientos', caja_id=caja.id)
+    else:
+        form = PagoProveedorForm(instance=pago)
+
+    return render(request, 'editar_pago.html', {
+        'form': form,
+        'pago': pago,
+        'caja': caja
+    })
+
+@login_required
+def eliminar_pago(request, pago_id):
+    pago = get_object_or_404(PagoProveedor, id=pago_id)
+    caja = pago.caja
+    
+    if request.method == 'POST':
+        pago.delete()
+        caja.actualizar_saldo_parcial()
+        messages.success(request, 'Pago eliminado correctamente')
+        return redirect('caja:registrar_movimientos', caja_id=caja.id)
+    
+    return render(request, 'confirmar_eliminar_pago.html', {
+        'pago': pago,
+        'caja': caja
+    })

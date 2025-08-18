@@ -9,4 +9,6 @@ urlpatterns = [
     path('<int:caja_id>/movimientos/', views.registrar_movimientos, name='registrar_movimientos'),
     path('limpiar/', views.limpiar_cajas, name='limpiar_cajas'),
     path('saldo-general/', views.gestionar_saldo_general, name='gestionar_saldo'),  # Nueva URL
+    path('pago/<int:pago_id>/editar/', views.editar_pago, name='editar_pago'),
+    path('pago/<int:pago_id>/eliminar/', views.eliminar_pago, name='eliminar_pago'),
 ]

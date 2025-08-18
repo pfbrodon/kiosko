@@ -174,7 +174,19 @@
                                 {% if pagos %}
                                     {% for pago in pagos %}
                                     <tr class="text-danger">
-                                        <td>{{ pago.proveedor }}:</td>
+                                        <td>
+                                            {{ pago.proveedor }}
+                                            {% if not caja.cerrada %}
+                                            <div class="btn-group btn-group-sm float-end">
+                                                <a href="{% url 'caja:editar_pago' pago.id %}" class="btn btn-outline-primary btn-sm" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'caja:eliminar_pago' pago.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                            {% endif %}
+                                        </td>
                                         <td class="text-end">-${{ pago.monto|floatformat:2 }}</td>
                                     </tr>
                                     {% endfor %}
