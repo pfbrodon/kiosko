@@ -1,9 +1,8 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import LoginForm, RegistroForm
-
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -24,7 +23,12 @@ def login_view(request):
     else:
         form = LoginForm()
     
-    return render(request, 'login.html', {'form': form})  # Sin usuarios/
+    return render(request, 'login.html', {'form': form})
+
+def logout_view(request):
+    logout(request)
+    messages.info(request, 'Sesión cerrada correctamente')
+    return redirect('usuarios:login')
 
 def registro_view(request):
     if request.user.is_authenticated:
@@ -40,8 +44,8 @@ def registro_view(request):
     else:
         form = RegistroForm()
     
-    return render(request, 'registro.html', {'form': form})  # Sin usuarios/
+    return render(request, 'registro.html', {'form': form})
 
 @login_required
 def perfil_view(request):
-    return render(request, 'perfil.html')  # Sin usuarios/
+    return render(request, 'perfil.html')
