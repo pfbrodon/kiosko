@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.db.models import Sum
 from decimal import Decimal
 
 class SaldoGeneral(models.Model):
@@ -22,7 +23,7 @@ class CajaDiaria(models.Model):
     fecha = models.DateField()
     turno = models.CharField(max_length=1, choices=TURNOS)
     nivel = models.CharField(max_length=1, choices=NIVELES)
-    saldo_inicial = models.DecimalField(max_digits=10, decimal_places=2)
+    saldo_inicial = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     saldo_parcial = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cerrada = models.BooleanField(default=False)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -42,6 +43,26 @@ class CajaDiaria(models.Model):
 
     def __str__(self):
         return f"{self.fecha} - {self.get_turno_display()} - {self.get_nivel_display()}"
+
+    def calcular_saldo_parcial(self):
+        # Suma todos los ingresos de recreos
+        ingresos_recreos = self.recreo_set.aggregate(
+            total=Sum('monto'))['total'] or Decimal('0')
+        
+        # Suma todos los ingresos de eventos especiales
+        ingresos_eventos = self.eventoespecial_set.aggregate(
+            total=Sum('monto'))['total'] or Decimal('0')
+        
+        # Suma todos los egresos por pagos
+        egresos_pagos = self.pagoproveedor_set.aggregate(
+            total=Sum('monto'))['total'] or Decimal('0')
+        
+        # Calcula el saldo parcial
+        return self.saldo_inicial + ingresos_recreos + ingresos_eventos - egresos_pagos
+
+    def actualizar_saldo_parcial(self):
+        self.saldo_parcial = self.calcular_saldo_parcial()
+        self.save()
 
 class Recreo(models.Model):
     caja = models.ForeignKey(CajaDiaria, on_delete=models.CASCADE)

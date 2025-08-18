@@ -16,7 +16,15 @@
                 </span>
             </h4>
             <p class="text-muted mb-0">
-                Saldo Parcial: ${{ caja.saldo_parcial|floatformat:2 }}
+                Saldo Parcial (Esta caja): ${{ caja.saldo_parcial|floatformat:2 }}
+            </p>
+            {% if ingresos_recreos_primario > 0 %}
+            <p class="text-muted mb-0">
+                Ingresos Recreos Primario: ${{ ingresos_recreos_primario|floatformat:2 }}
+            </p>
+            {% endif %}
+            <p class="text-muted mb-0">
+                <strong>Saldo Parcial Total: ${{ saldo_parcial_total|floatformat:2 }}</strong>
             </p>
         </div>
     </div>

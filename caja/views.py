@@ -95,28 +95,22 @@ def registrar_movimientos(request, caja_id):
                 try:
                     recreo.full_clean()
                     recreo.save()
-                    caja.saldo_parcial += recreo.monto
-                    caja.save()
+                    caja.actualizar_saldo_parcial()
                     messages.success(request, 'Recreo registrado correctamente')
                 except ValidationError as e:
                     messages.error(request, e.messages[0])
-            return redirect('caja:registrar_movimientos', caja_id=caja.id)
         
         elif 'agregar_evento' in request.POST:
             descripcion = request.POST.get('descripcion_evento')
             monto = Decimal(request.POST.get('monto_evento', '0'))
             
-            evento = EventoEspecial.objects.create(
+            EventoEspecial.objects.create(
                 caja=caja,
                 descripcion=descripcion,
                 monto=monto
             )
-            
-            caja.saldo_parcial += monto
-            caja.save()
-            
+            caja.actualizar_saldo_parcial()
             messages.success(request, 'Evento especial registrado correctamente')
-            return redirect('caja:registrar_movimientos', caja_id=caja.id)
         
         elif 'agregar_pago' in request.POST and caja.nivel == 'S':
             form = PagoProveedorForm(request.POST)
@@ -124,28 +118,50 @@ def registrar_movimientos(request, caja_id):
                 pago = form.save(commit=False)
                 pago.caja = caja
                 pago.save()
-                caja.saldo_parcial -= pago.monto
-                caja.save()
+                caja.actualizar_saldo_parcial()
                 messages.success(request, 'Pago registrado correctamente')
-            return redirect('caja:registrar_movimientos', caja_id=caja.id)
         
         elif 'cerrar_caja' in request.POST:
-            saldo_general.monto += caja.saldo_parcial
+            # Al cerrar la caja, actualizamos el saldo general
+            saldo_diferencia = caja.saldo_parcial - caja.saldo_inicial
+            saldo_general.monto += saldo_diferencia
             saldo_general.save()
+            
             caja.cerrada = True
             caja.save()
             messages.success(request, 'Caja cerrada correctamente')
             return redirect('caja:lista_cajas')
+        
+        return redirect('caja:registrar_movimientos', caja_id=caja.id)
+
+    # Antes de mostrar la página, calculamos el saldo parcial total
+    # incluyendo los recreos de las cajas primarias abiertas
+    cajas_primarias_abiertas = CajaDiaria.objects.filter(
+        nivel='P',  # Solo cajas primarias
+        cerrada=False  # Que no estén cerradas
+    ).exclude(id=caja.id)  # Excluimos la caja actual
+    
+    ingresos_recreos_primario = Recreo.objects.filter(
+        caja__in=cajas_primarias_abiertas
+    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+    
+    # Actualizamos el saldo parcial antes de mostrar la página
+    caja.actualizar_saldo_parcial()
+    
+    # Sumamos los ingresos de recreos del primario al saldo parcial
+    saldo_parcial_total = caja.saldo_parcial + ingresos_recreos_primario
     
     context = {
         'caja': caja,
         'saldo_general': saldo_general,
         'recreo_form': RecreoForm(),
-        'pago_form': PagoProveedorForm(),  # Agregar esta línea
+        'pago_form': PagoProveedorForm(),
         'eventos': EventoEspecial.objects.filter(caja=caja),
         'pagos': PagoProveedor.objects.filter(caja=caja) if caja.nivel == 'S' else None,
         'recreos': recreos,
         'proximo_recreo': proximo_recreo,
+        'saldo_parcial_total': saldo_parcial_total,  # Nuevo campo
+        'ingresos_recreos_primario': ingresos_recreos_primario,  # Para mostrar el detalle
     }
     
     return render(request, 'registrar_movimientos.html', context)
