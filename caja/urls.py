@@ -7,4 +7,6 @@ urlpatterns = [
     path('', views.lista_cajas, name='lista_cajas'),
     path('iniciar/', views.iniciar_caja, name='iniciar_caja'),
     path('<int:caja_id>/movimientos/', views.registrar_movimientos, name='registrar_movimientos'),
+    path('limpiar/', views.limpiar_cajas, name='limpiar_cajas'),
+    path('saldo-general/', views.gestionar_saldo_general, name='gestionar_saldo'),  # Nueva URL
 ]

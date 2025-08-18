@@ -5,6 +5,25 @@ from django.core.exceptions import ValidationError  # Agregamos esta importació
 from decimal import Decimal
 from .models import SaldoGeneral, CajaDiaria, Recreo, EventoEspecial, PagoProveedor
 from .forms import InicioCajaForm, RecreoForm, EventoEspecialForm, PagoProveedorForm
+from django import forms
+
+class SaldoGeneralForm(forms.Form):
+    monto = forms.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        })
+    )
+    tipo_operacion = forms.ChoiceField(
+        choices=[
+            ('establecer', 'Establecer nuevo saldo'),
+            ('sumar', 'Sumar al saldo actual'),
+            ('restar', 'Restar al saldo actual')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
 
 def lista_cajas(request):
     saldo_general = SaldoGeneral.objects.first()
@@ -130,3 +149,53 @@ def registrar_movimientos(request, caja_id):
     }
     
     return render(request, 'registrar_movimientos.html', context)
+
+def limpiar_cajas(request):
+    if request.method == 'POST':
+        try:
+            # Eliminamos primero las tablas relacionadas
+            EventoEspecial.objects.all().delete()
+            PagoProveedor.objects.all().delete()
+            Recreo.objects.all().delete()
+            CajaDiaria.objects.all().delete()
+            
+            # Reiniciamos el saldo general
+            saldo_general = SaldoGeneral.objects.first()
+            if saldo_general:
+                saldo_general.monto = 0
+                saldo_general.save()
+            
+            messages.success(request, 'Datos de caja limpiados correctamente')
+        except Exception as e:
+            messages.error(request, f'Error al limpiar datos: {str(e)}')
+    
+    return redirect('caja:lista_cajas')
+
+def gestionar_saldo_general(request):
+    saldo_general = SaldoGeneral.objects.first()
+    if not saldo_general:
+        saldo_general = SaldoGeneral.objects.create()
+
+    if request.method == 'POST':
+        form = SaldoGeneralForm(request.POST)
+        if form.is_valid():
+            monto = form.cleaned_data['monto']
+            tipo_operacion = form.cleaned_data['tipo_operacion']
+
+            if tipo_operacion == 'establecer':
+                saldo_general.monto = monto
+            elif tipo_operacion == 'sumar':
+                saldo_general.monto += monto
+            else:  # restar
+                saldo_general.monto -= monto
+
+            saldo_general.save()
+            messages.success(request, 'Saldo general actualizado correctamente')
+            return redirect('caja:lista_cajas')
+    else:
+        form = SaldoGeneralForm()
+
+    return render(request, 'gestionar_saldo.html', {
+        'form': form,
+        'saldo_general': saldo_general
+    })
