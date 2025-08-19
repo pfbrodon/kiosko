@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  app:
+    image: kioskogestion:0.01
+    restart: always
+    ports:
+      - '8010:8000'
+    volumes:
+      - .:/app
