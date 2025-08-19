@@ -1,0 +1,34 @@
+\Pablo\Desktop\Programacion\kiosko\precios\templates\precios\confirmar_eliminar_proveedor.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="col-md-6 offset-md-3">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">Confirmar Eliminación</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">¿Estás seguro de que deseas eliminar el siguiente proveedor?</p>
+                
+                <div class="alert alert-info">
+                    <p class="mb-1"><strong>Nombre:</strong> {{ proveedor.nombre }}</p>
+                    <p class="mb-1"><strong>Teléfono:</strong> {{ proveedor.telefono }}</p>
+                    <p class="mb-1"><strong>Dirección:</strong> {{ proveedor.direccion }}</p>
+                    <p class="mb-0"><strong>Email:</strong> {{ proveedor.email }}</p>
+                </div>
+
+                <form method="post" class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    {% csrf_token %}
+                    <a href="{% url 'lista_proveedores' %}" class="btn btn-secondary me-md-2">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

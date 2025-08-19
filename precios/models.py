@@ -29,14 +29,19 @@ class Subcategoria(models.Model):
 
 
 class Proveedor(models.Model):
-    nombre = models.CharField(max_length=200)
-    activo = models.BooleanField(default=True)
+    nombre = models.CharField(max_length=100)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    direccion = models.CharField(max_length=200, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
 
     class Meta:
-        verbose_name_plural = "Proveedores"
+        ordering = ['nombre']
+        verbose_name = 'Proveedor'
+        verbose_name_plural = 'Proveedores'
 
     def __str__(self):
         return self.nombre
+
 
 class Marca(models.Model):
     nombre = models.CharField(max_length=100, unique=True)

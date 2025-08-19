@@ -124,15 +124,12 @@ class CategoriaForm(forms.ModelForm):
 class ProveedorForm(forms.ModelForm):
     class Meta:
         model = Proveedor
-        fields = ['nombre', 'activo']
+        fields = ['nombre', 'telefono', 'direccion', 'email']
         widgets = {
-            'nombre': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Nombre del proveedor'
-            }),
-            'activo': forms.CheckboxInput(attrs={
-                'class': 'form-check-input'
-            })
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
+            'direccion': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
         }
         
 class MarcaForm(forms.ModelForm):

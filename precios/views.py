@@ -191,6 +191,36 @@ def crear_proveedor(request):
         form = ProveedorForm()
     return render(request, 'crear_proveedor.html', {'form': form})
 
+@login_required
+def editar_proveedor(request, pk):
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    
+    if request.method == 'POST':
+        form = ProveedorForm(request.POST, instance=proveedor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Proveedor actualizado correctamente')
+            return redirect('lista_proveedores')
+    else:
+        form = ProveedorForm(instance=proveedor)
+    
+    return render(request, 'editar_proveedor.html', {
+        'form': form,
+        'proveedor': proveedor
+    })
+
+@solo_admin
+def eliminar_proveedor(request, pk):
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    
+    if request.method == 'POST':
+        proveedor.delete()
+        messages.success(request, 'Proveedor eliminado correctamente')
+        return redirect('lista_proveedores')
+    
+    return render(request, 'confirmar_eliminar_proveedor.html', {
+        'proveedor': proveedor
+    })
 
 #---------------------------------MARCAS---------------------------------
 
