@@ -271,3 +271,16 @@ def eliminar_pago(request, pago_id):
         'pago': pago,
         'caja': caja
     })
+
+@login_required
+def ver_movimientos_caja(request, caja_id):
+    caja = get_object_or_404(CajaDiaria, id=caja_id)
+    recreos = Recreo.objects.filter(caja=caja)
+    eventos = EventoEspecial.objects.filter(caja=caja)
+    pagos = PagoProveedor.objects.filter(caja=caja)
+    return render(request, 'ver_movimientos_caja.html', {
+        'caja': caja,
+        'recreos': recreos,
+        'eventos': eventos,
+        'pagos': pagos,
+    })

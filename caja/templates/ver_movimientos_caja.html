@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-xl mt-4">
+    <h2>Movimientos de Caja - {{ caja.get_nivel_display }} {{ caja.get_turno_display }} ({{ caja.fecha|date:"d/m/Y" }})</h2>
+    <hr>
+
+    <h4>Ingresos por Recreos</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Monto</th>
+                <th>Fecha Registro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for recreo in recreos %}
+            <tr>
+                <td>{{ recreo.numero }}</td>
+                <td>${{ recreo.monto|floatformat:2 }}</td>
+                <td>{{ recreo.fecha_registro|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center">Sin ingresos por recreos</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h4>Eventos Especiales</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Descripción</th>
+                <th>Monto</th>
+                <th>Fecha Registro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for evento in eventos %}
+            <tr>
+                <td>{{ evento.descripcion }}</td>
+                <td>${{ evento.monto|floatformat:2 }}</td>
+                <td>{{ evento.fecha_registro|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center">Sin eventos especiales</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h4>Pagos a Proveedores</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Proveedor</th>
+                <th>Monto</th>
+                <th>Descripción</th>
+                <th>Fecha Registro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pago in pagos %}
+            <tr>
+                <td>{{ pago.proveedor }}</td>
+                <td>${{ pago.monto|floatformat:2 }}</td>
+                <td>{{ pago.descripcion }}</td>
+                <td>{{ pago.fecha_registro|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center">Sin pagos registrados</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mt-4">
+        <a href="{% url 'caja:lista_cajas' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Volver a la lista de cajas
+        </a>
+    </div>
+</div>
+{% endblock %}

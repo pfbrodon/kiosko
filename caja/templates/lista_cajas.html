@@ -78,6 +78,10 @@
                                     <a href="{% url 'caja:registrar_movimientos' caja.id %}" class="btn btn-primary btn-sm">
                                         <i class="fas fa-cash-register"></i> Registrar
                                     </a>
+                                {% else %}
+                                    <a href="{% url 'caja:ver_movimientos_caja' caja.id %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-eye"></i> Ver Movimientos
+                                    </a>
                                 {% endif %}
                             </td>
                         </tr>
