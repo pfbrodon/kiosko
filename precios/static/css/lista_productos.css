@@ -1,0 +1,58 @@
+/* Estilos para la tabla de productos */
+.table {
+    font-size: 0.9rem;
+    min-width: 1200px;
+}
+
+/* Encabezados de la tabla */
+.table thead th {
+    font-size: 0.95rem;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+/* Precio de venta */
+.table td.fw-bold {
+    font-size: 0.95rem;
+}
+
+/* Badges de estado */
+.badge {
+    font-size: 0.85rem;
+}
+
+/* Título de la página */
+h2 {
+    font-size: 1.75rem;
+}
+
+/* Labels de los filtros */
+.form-label {
+    font-size: 0.9rem;
+}
+
+/* Anchos específicos de columnas */
+.table th:nth-child(1),
+.table td:nth-child(1) {
+    min-width: 150px;  /* Nombre */
+}
+
+.table th:nth-child(8),
+.table th:nth-child(9),
+.table th:nth-child(10),
+.table td:nth-child(8),
+.table td:nth-child(9),
+.table td:nth-child(10) {
+    min-width: 100px;  /* Precios y descuento */
+}
+
+.table th:nth-child(6),
+.table th:nth-child(7),
+.table td:nth-child(6),
+.table td:nth-child(7) {
+    min-width: 80px;  /* Stock y mínimo */
+}
+
+.container-xxl {
+    max-width: 1500px !important; /* O el ancho que prefieras */
+}

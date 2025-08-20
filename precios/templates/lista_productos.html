@@ -1,7 +1,13 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/lista_productos.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="container-xl mt-4">
+<div class="container-xxl mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Listado de Productos</h2>
         <a href="{% url 'crear_producto' %}" class="btn btn-primary">
@@ -55,12 +61,12 @@
                             <th>Nombre</th>
                             <th>Marca</th>
                             <th>Categoría</th>
-                            <th>Subcategoría</th>
+                            <th>Subcat.</th>
                             <th>Proveedor</th>
                             <th>Stock</th>
                             <th>Mínimo</th>
-                            <th>P Compra</th>
-                            <th>Descuento</th>
+                            <th>P Comp.</th>
+                            <th>Desc.</th>
                             <th>PvP</th>
                             <th>Estado</th>
                             <th>Acciones</th>
