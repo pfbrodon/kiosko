@@ -284,3 +284,24 @@ def ver_movimientos_caja(request, caja_id):
         'eventos': eventos,
         'pagos': pagos,
     })
+
+@login_required
+def editar_recreo(request, recreo_id):
+    recreo = get_object_or_404(Recreo, id=recreo_id)
+    caja = recreo.caja
+
+    if request.method == 'POST':
+        form = RecreoForm(request.POST, instance=recreo)
+        if form.is_valid():
+            form.save()
+            caja.actualizar_saldo_parcial()
+            messages.success(request, 'Recreo actualizado correctamente')
+            return redirect('caja:registrar_movimientos', caja_id=caja.id)
+    else:
+        form = RecreoForm(instance=recreo)
+
+    return render(request, 'editar_recreo.html', {
+        'form': form,
+        'recreo': recreo,
+        'caja': caja
+    })

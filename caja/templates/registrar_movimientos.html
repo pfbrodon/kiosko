@@ -69,32 +69,47 @@
 
             <!-- Resumen de Recreos -->
             <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Recreos Registrados</h5>
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Resumen de Recreos
+                    </h5>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Recreo</th>
-                                    <th class="text-end">Monto</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for recreo in recreos %}
-                                <tr>
-                                    <td>Recreo {{ recreo.numero }}</td>
-                                    <td class="text-end">${{ recreo.monto|floatformat:2 }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="2" class="text-center">No hay recreos registrados</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    <table class="table">
+                        <tbody>
+                            {% for recreo in recreos %}
+                            <tr class="text-success">
+                                <td>
+                                    Recreo {{ recreo.numero }}
+                                    {% if not caja.cerrada %}
+                                    <div class="btn-group btn-group-sm float-end">
+                                        <a href="{% url 'caja:editar_recreo' recreo.id %}" 
+                                           class="btn btn-outline-primary btn-sm" 
+                                           title="Editar monto">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">+${{ recreo.monto|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center text-muted">
+                                    No hay recreos registrados
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if recreos %}
+                            <tr class="table-success">
+                                <td><strong>Total Recreos</strong></td>
+                                <td class="text-end">
+                                    <strong>+${{ recreos.total|default:"0.00"|floatformat:2 }}</strong>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
