@@ -3,8 +3,14 @@
 {% block content %}
 <div class="container mt-4">
     <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Editar Recreo {{ recreo.numero }}</h4>
+        <div class="card-header {% if recreo.caja.es_extra %}bg-warning text-dark{% else %}bg-primary text-white{% endif %}">
+            <h4 class="mb-0">
+                {% if recreo.caja.es_extra %}
+                    Editar Ingreso Extra
+                {% else %}
+                    Editar Recreo {{ recreo.numero }}
+                {% endif %}
+            </h4>
         </div>
         <div class="card-body">
             <form method="post">

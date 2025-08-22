@@ -14,6 +14,15 @@ class InicioCajaForm(forms.ModelForm):
             'nivel': forms.Select(attrs={'class': 'form-select'})
         }
 
+class InicioCajaExtraForm(forms.ModelForm):
+    class Meta:
+        model = CajaDiaria
+        fields = ['turno', 'nivel']
+        widgets = {
+            'turno': forms.Select(attrs={'class': 'form-select'}),
+            'nivel': forms.Select(attrs={'class': 'form-select'})
+        }
+
 class RecreoForm(forms.ModelForm):
     class Meta:
         model = Recreo

@@ -2,10 +2,13 @@
 
 {% block content %}
 <div class="container-xl mt-4">
-    <h2>Movimientos de Caja - {{ caja.get_nivel_display }} {{ caja.get_turno_display }} ({{ caja.fecha|date:"d/m/Y" }})</h2>
+    <h2>
+        Movimientos de Caja - {{ caja.get_nivel_display }} {{ caja.get_turno_display }} ({{ caja.fecha|date:"d/m/Y" }})
+        {% if caja.es_extra %}<span class="badge bg-warning text-dark">Caja Extra</span>{% endif %}
+    </h2>
     <hr>
 
-    <h4>Ingresos por Recreos</h4>
+    <h4>{% if caja.es_extra %}Ingresos Extras{% else %}Ingresos por Recreos{% endif %}</h4>
     <table class="table table-bordered">
         <thead>
             <tr>
@@ -17,16 +20,19 @@
         <tbody>
             {% for recreo in recreos %}
             <tr>
-                <td>{{ recreo.numero }}</td>
+                <td>{% if caja.es_extra %}Ingreso Extra{% else %}{{ recreo.numero }}{% endif %}</td>
                 <td>${{ recreo.monto|floatformat:2 }}</td>
                 <td>{{ recreo.fecha_registro|date:"d/m/Y H:i" }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" class="text-center">Sin ingresos por recreos</td></tr>
+            <tr><td colspan="3" class="text-center">
+                {% if caja.es_extra %}Sin ingresos extras{% else %}Sin ingresos por recreos{% endif %}
+            </td></tr>
             {% endfor %}
         </tbody>
     </table>
 
+    {% if not caja.es_extra %}
     <h4>Eventos Especiales</h4>
     <table class="table table-bordered">
         <thead>
@@ -48,6 +54,7 @@
             {% endfor %}
         </tbody>
     </table>
+    {% endif %}
 
     <h4>Pagos a Proveedores</h4>
     <table class="table table-bordered">

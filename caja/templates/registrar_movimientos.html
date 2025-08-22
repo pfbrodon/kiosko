@@ -5,7 +5,12 @@
     <!-- Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2>{{ caja.get_nivel_display }} - {{ caja.get_turno_display }}</h2>
+            <h2>
+                {{ caja.get_nivel_display }} - {{ caja.get_turno_display }}
+                {% if caja.es_extra %}
+                <span class="badge bg-warning text-dark">Caja Extra</span>
+                {% endif %}
+            </h2>
             <p class="text-muted mb-0">{{ caja.fecha|date:"d/m/Y" }}</p>
         </div>
         <div class="text-end">
@@ -23,11 +28,27 @@
                 Ingresos Recreos Primario: ${{ ingresos_recreos_primario|floatformat:2 }}
             </p>
             {% endif %}
-            <p class="text-muted mb-0">
-                <strong>Saldo Parcial Total: ${{ saldo_parcial_total|floatformat:2 }}</strong>
+            <p class="mb-0 fw-bold {% if saldo_parcial_total >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                <span class="me-2">Saldo Parcial Total:</span>${{ saldo_parcial_total|floatformat:2 }}
             </p>
         </div>
     </div>
+
+    {% if caja.es_extra %}
+    <div class="alert alert-warning mb-4">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-info-circle fa-2x me-3"></i>
+            <div>
+                <h5 class="mb-1">Esta es una caja extra</h5>
+                {% if caja.nivel == 'P' %}
+                <p class="mb-0">Las cajas extras de nivel <strong>Primario</strong> solo pueden registrar <strong>ingresos por ventas</strong>.</p>
+                {% else %}
+                <p class="mb-0">Las cajas extras de nivel <strong>Secundario</strong> pueden registrar <strong>ventas y pagos a proveedores</strong>.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% if messages %}
         {% for message in messages %}
@@ -41,37 +62,59 @@
     <div class="row">
         <!-- Panel de Ingresos -->
         <div class="col-md-6">
-            <!-- Formulario de Recreo -->
+            <!-- Formulario de Recreo o Ingreso Extra -->
             <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Registrar Recreo</h5>
+                <div class="card-header {% if caja.es_extra %}bg-warning text-dark{% else %}bg-primary text-white{% endif %}">
+                    <h5 class="mb-0">
+                        <i class="fas fa-{% if caja.es_extra %}dollar-sign{% else %}clock{% endif %} me-2"></i>
+                        {% if caja.es_extra %}Registrar Ingreso Extra{% else %}Registrar Recreo{% endif %}
+                    </h5>
                 </div>
                 <div class="card-body">
                     {% if proximo_recreo %}
                         <form method="post">
                             {% csrf_token %}
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Recreo {{ proximo_recreo }}</label>
-                                <input type="hidden" name="numero" value="{{ proximo_recreo }}">
+                                {% if caja.es_extra %}
+                                    <label class="form-label fw-bold">Monto del Ingreso Extra</label>
+                                    <input type="hidden" name="numero" value="1">
+                                {% else %}
+                                    <label class="form-label fw-bold">Recreo {{ proximo_recreo }}</label>
+                                    <input type="hidden" name="numero" value="{{ proximo_recreo }}">
+                                {% endif %}
                                 {{ recreo_form.monto }}
                             </div>
-                            <button type="submit" name="agregar_recreo" class="btn btn-primary">
-                                <i class="fas fa-plus me-2"></i>Agregar Recreo {{ proximo_recreo }}
+                            <button type="submit" name="agregar_recreo" class="btn btn-{% if caja.es_extra %}warning{% else %}primary{% endif %}">
+                                <i class="fas fa-plus me-2"></i>
+                                {% if caja.es_extra %}
+                                    Registrar Ingreso Extra
+                                {% else %}
+                                    Agregar Recreo {{ proximo_recreo }}
+                                {% endif %}
                             </button>
                         </form>
                     {% else %}
                         <div class="alert alert-info mb-0">
-                            Ya se registraron todos los recreos
+                            {% if caja.es_extra %}
+                                Ya se registró el ingreso extra para esta caja
+                            {% else %}
+                                Ya se registraron todos los recreos
+                            {% endif %}
                         </div>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Resumen de Recreos -->
+            <!-- Resumen de Recreos o Ingresos -->
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-list me-2"></i>Resumen de Recreos
+                        <i class="fas fa-list me-2"></i>
+                        {% if caja.es_extra %}
+                            Resumen de Ingresos
+                        {% else %}
+                            Resumen de Recreos
+                        {% endif %}
                     </h5>
                 </div>
                 <div class="card-body">
@@ -80,11 +123,15 @@
                             {% for recreo in recreos %}
                             <tr class="text-success">
                                 <td>
-                                    Recreo {{ recreo.numero }}
+                                    {% if caja.es_extra %}
+                                        Ingreso Extra
+                                    {% else %}
+                                        Recreo {{ recreo.numero }}
+                                    {% endif %}
                                     {% if not caja.cerrada %}
                                     <div class="btn-group btn-group-sm float-end">
                                         <a href="{% url 'caja:editar_recreo' recreo.id %}" 
-                                           class="btn btn-outline-primary btn-sm" 
+                                           class="btn btn-outline-{% if caja.es_extra %}warning{% else %}primary{% endif %} btn-sm" 
                                            title="Editar monto">
                                             <i class="fas fa-edit"></i>
                                         </a>
@@ -96,13 +143,25 @@
                             {% empty %}
                             <tr>
                                 <td colspan="2" class="text-center text-muted">
-                                    No hay recreos registrados
+                                    {% if caja.es_extra %}
+                                        No hay ingresos registrados
+                                    {% else %}
+                                        No hay recreos registrados
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
                             {% if recreos %}
                             <tr class="table-success">
-                                <td><strong>Total Recreos</strong></td>
+                                <td>
+                                    <strong>
+                                    {% if caja.es_extra %}
+                                        Total Ingresos
+                                    {% else %}
+                                        Total Recreos
+                                    {% endif %}
+                                    </strong>
+                                </td>
                                 <td class="text-end">
                                     <strong>+${{ recreos.total|default:"0.00"|floatformat:2 }}</strong>
                                 </td>
@@ -113,7 +172,8 @@
                 </div>
             </div>
 
-            <!-- Botón para habilitar evento especial -->
+            {% if not caja.es_extra %}
+            <!-- Botón para habilitar evento especial (solo para cajas normales) -->
             <div class="card mb-4">
                 <div class="card-header bg-warning">
                     <h5 class="mb-0">
@@ -137,12 +197,13 @@
                     </form>
                 </div>
             </div>
+            {% endif %}
         </div>
 
         <!-- Panel de Egresos y Resumen -->
         <div class="col-md-6">
-            {% if caja.nivel == 'S' %}
-            <!-- Formulario de Pagos (solo para secundario) -->
+            {% if puede_hacer_pagos %}
+            <!-- Formulario de Pagos (solo para secundario - normal o extra) -->
             <div class="card mb-4">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0">
@@ -176,7 +237,13 @@
                                 </tr>
                                 {% for recreo in recreos %}
                                 <tr class="text-success">
-                                    <td>Recreo {{ recreo.numero }}:</td>
+                                    <td>
+                                        {% if caja.es_extra %}
+                                            Ingreso Extra:
+                                        {% else %}
+                                            Recreo {{ recreo.numero }}:
+                                        {% endif %}
+                                    </td>
                                     <td class="text-end">+${{ recreo.monto|floatformat:2 }}</td>
                                 </tr>
                                 {% endfor %}
