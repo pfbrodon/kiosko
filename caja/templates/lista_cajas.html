@@ -1,6 +1,26 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+    .fecha-grupo {
+        margin-bottom: 2.5rem;
+        padding-bottom: 0.5rem;
+    }
+    .fecha-grupo:last-child {
+        margin-bottom: 0;
+    }
+    .fecha-grupo h5 {
+        position: relative;
+        padding-left: 0.5rem;
+    }
+    .fecha-grupo h5.text-primary {
+        border-bottom-color: #0d6efd !important;
+        border-bottom-width: 2px !important;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+    }
+</style>
 <div class="container-xl mt-4">
     <!-- Header con Saldo General y Parcial -->
     <div class="row mb-4">
@@ -32,10 +52,33 @@
         </div>
     </div>
 
-    <!-- Botones de Acción -->
+    <!-- Filtros y Botones de Acción -->
     <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
+        <div class="col-md-6 mb-3 mb-md-0">
+            <form method="get" class="d-flex align-items-center">
+                <div class="input-group">
+                    <select name="fecha" class="form-select" id="filtroFecha" onchange="this.form.submit()">
+                        <option value="">Todas las fechas</option>
+                        {% for fecha in fechas_disponibles %}
+                            <option value="{{ fecha|date:'Y-m-d' }}" {% if fecha_filtro == fecha %}selected{% endif %}>
+                                {{ fecha|date:"d/m/Y" }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                    {% if fecha_filtro %}
+                        <a href="{% url 'caja:lista_cajas' %}" class="btn btn-outline-danger">
+                            <i class="fas fa-times"></i> Limpiar
+                        </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="d-flex justify-content-md-end justify-content-between align-items-center">
                 <div>
                     {% if hay_cajas_abiertas %}
                         <button class="btn btn-primary me-2" disabled title="No se puede iniciar una nueva caja mientras haya cajas en proceso">
@@ -67,91 +110,128 @@
                         </a>
                     {% endif %}
                 </div>
-                <a href="{% url 'home' %}" class="btn btn-secondary">
-                    <i class="fas fa-home me-2"></i>Volver al Inicio
-                </a>
+                <div class="ms-4">
+                    <a href="{% url 'home' %}" class="btn btn-secondary">
+                        <i class="fas fa-home me-2"></i>Volver al Inicio
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabla de Cajas -->
+    <!-- Tabla de Cajas Agrupadas por Fecha -->
     <div class="card">
         <div class="card-body">
-            {% if cajas %}
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Nivel</th>
-                            <th>Turno</th>
-                            <th>Saldo Inicial</th>
-                            <th>Total Ingresos</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for caja in cajas %}
-                        <tr {% if caja.es_extra %}class="table-warning"{% endif %}>
-                            <td>{{ caja.fecha|date:"d/m/Y" }}</td>
-                            <td>
-                                {{ caja.get_nivel_display }}
-                                {% if caja.es_extra %}
-                                    <span class="badge bg-warning text-dark">Extra</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ caja.get_turno_display }}</td>
-                            <td>
-                                {% if caja.nivel == 'S' and not caja.es_extra %}
-                                    ${{ caja.saldo_inicial|floatformat:2 }}
-                                {% else %}
-                                    $0.00
-                                {% endif %}
-                            </td>
-                            <td>${{ caja.get_total_ingresos|floatformat:2 }}</td>
-                            <td>
-                                {% if caja.cerrada %}
-                                    <span class="badge bg-secondary">Cerrada</span>
-                                {% else %}
-                                    <span class="badge bg-success">En Proceso</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="d-flex gap-1">
-                                    {% if not caja.cerrada %}
-                                        <a href="{% url 'caja:registrar_movimientos' caja.id %}" class="btn btn-primary btn-sm">
-                                            <i class="fas fa-cash-register"></i> Registrar
-                                        </a>
-                                    {% else %}
-                                        <a href="{% url 'caja:ver_movimientos_caja' caja.id %}" class="btn btn-outline-secondary btn-sm">
-                                            <i class="fas fa-eye"></i> Ver Movimientos
-                                        </a>
-                                    {% endif %}
-                                    
-                                    {% if caja.es_extra and user.is_staff %}
-                                        <button type="button" class="btn btn-danger btn-sm" 
-                                                onclick="confirmarEliminarCaja({{ caja.id }}, '{{ caja.fecha|date:'d/m/Y' }} - {{ caja.get_turno_display }} - {{ caja.get_nivel_display }}')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center">No hay cajas registradas</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            {% if fecha_filtro %}
+                <div class="alert alert-info mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-filter me-3"></i>
+                        <div>
+                            <h6 class="mb-0">Mostrando cajas para la fecha: {{ fecha_filtro|date:"d/m/Y" }}</h6>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        
+            {% if cajas_por_fecha %}
+                {% for grupo in cajas_por_fecha %}
+                    <!-- Encabezado de fecha -->
+                    <div class="fecha-grupo mb-3">
+                        <h5 class="border-bottom pb-2 {% if grupo.es_hoy %}text-primary fw-bold{% endif %}">
+                            <i class="fas fa-calendar-day me-2"></i>{{ grupo.fecha|date:"d/m/Y" }}
+                            {% if grupo.es_hoy %}
+                                <span class="badge bg-primary ms-2">HOY</span>
+                            {% endif %}
+                        </h5>
+                        
+                        <!-- Tabla de cajas para esta fecha -->
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Nivel</th>
+                                        <th>Turno</th>
+                                        <th>Saldo Inicial</th>
+                                        <th>Total Ingresos</th>
+                                        <th>Total Egresos</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for caja in grupo.cajas %}
+                                    <tr {% if caja.es_extra %}class="table-warning"{% endif %}>
+                                        <td>
+                                            {{ caja.get_nivel_display }}
+                                            {% if caja.es_extra %}
+                                                <span class="badge bg-warning text-dark">Extra</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ caja.get_turno_display }}</td>
+                                        <td>
+                                            {% if caja.nivel == 'S' and not caja.es_extra %}
+                                                ${{ caja.saldo_inicial|floatformat:2 }}
+                                            {% else %}
+                                                $0.00
+                                            {% endif %}
+                                        </td>
+                                        <td>${{ caja.get_total_ingresos|floatformat:2 }}</td>
+                                        <td>
+                                            {% if caja.nivel == 'S' %}
+                                                ${{ caja.get_total_egresos|floatformat:2 }}
+                                            {% else %}
+                                                $0.00
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if caja.cerrada %}
+                                                <span class="badge bg-secondary">Cerrada</span>
+                                            {% else %}
+                                                <span class="badge bg-success">En Proceso</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                {% if not caja.cerrada %}
+                                                    <a href="{% url 'caja:registrar_movimientos' caja.id %}" class="btn btn-primary btn-sm">
+                                                        <i class="fas fa-cash-register"></i> Registrar
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{% url 'caja:ver_movimientos_caja' caja.id %}" class="btn btn-outline-secondary btn-sm">
+                                                        <i class="fas fa-eye"></i> Ver Movimientos
+                                                    </a>
+                                                {% endif %}
+                                                
+                                                {% if caja.es_extra and user.is_staff %}
+                                                    <button type="button" class="btn btn-danger btn-sm" 
+                                                            onclick="confirmarEliminarCaja({{ caja.id }}, '{{ caja.fecha|date:'d/m/Y' }} - {{ caja.get_turno_display }} - {{ caja.get_nivel_display }}')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endfor %}
             {% else %}
-            <div class="text-center py-4">
-                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">No hay cajas registradas</h5>
-                <p class="text-muted">Inicia una nueva caja para comenzar</p>
-            </div>
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    {% if fecha_filtro %}
+                        <h5 class="text-muted">No hay cajas registradas para la fecha seleccionada</h5>
+                        <p class="text-muted">
+                            <a href="{% url 'caja:lista_cajas' %}" class="btn btn-outline-primary mt-2">
+                                <i class="fas fa-undo me-2"></i>Ver todas las cajas
+                            </a>
+                        </p>
+                    {% else %}
+                        <h5 class="text-muted">No hay cajas registradas</h5>
+                        <p class="text-muted">Inicia una nueva caja para comenzar</p>
+                    {% endif %}
+                </div>
             {% endif %}
         </div>
     </div>

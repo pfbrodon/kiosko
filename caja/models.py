@@ -124,6 +124,14 @@ class CajaDiaria(models.Model):
             )['total'] or Decimal('0')
         
         return total_recreos + total_eventos
+        
+    def get_total_egresos(self):
+        """Retorna el total de egresos por pagos a proveedores"""
+        from django.db.models import Sum
+        
+        return self.pagoproveedor_set.aggregate(
+            total=Sum('monto')
+        )['total'] or Decimal('0')
 
 class Recreo(models.Model):
     caja = models.ForeignKey(CajaDiaria, on_delete=models.CASCADE)

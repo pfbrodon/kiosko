@@ -31,13 +31,44 @@ class SaldoGeneralForm(forms.Form):
 @login_required
 def lista_cajas(request):
     import datetime
+    from itertools import groupby
+    from operator import attrgetter
+    
     today = datetime.date.today()
     
     saldo_general = SaldoGeneral.objects.first()
     if not saldo_general:
         saldo_general = SaldoGeneral.objects.create()
     
-    cajas = CajaDiaria.objects.all()
+    # Obtenemos el filtro de fecha si existe
+    fecha_filtro = request.GET.get('fecha')
+    
+    # Obtenemos fechas únicas para el dropdown del filtro
+    fechas_disponibles = CajaDiaria.objects.values_list('fecha', flat=True).distinct().order_by('-fecha')
+    
+    # Obtenemos todas las cajas ordenadas por fecha (descendente)
+    cajas_query = CajaDiaria.objects.all()
+    
+    # Aplicamos filtro si existe
+    if fecha_filtro:
+        try:
+            fecha_filtro = datetime.datetime.strptime(fecha_filtro, '%Y-%m-%d').date()
+            cajas_query = cajas_query.filter(fecha=fecha_filtro)
+        except (ValueError, TypeError):
+            # Si hay un error en el formato de fecha, ignoramos el filtro
+            pass
+    
+    cajas = cajas_query.order_by('-fecha', 'turno', 'nivel', 'es_extra')
+    
+    # Agrupar cajas por fecha
+    cajas_por_fecha = []
+    for fecha, grupo in groupby(cajas, key=attrgetter('fecha')):
+        cajas_grupo = list(grupo)
+        cajas_por_fecha.append({
+            'fecha': fecha,
+            'cajas': cajas_grupo,
+            'es_hoy': fecha == today
+        })
     
     # Verificar si hay cajas abiertas (en proceso)
     hay_cajas_abiertas = cajas.filter(cerrada=False).exists()
@@ -93,10 +124,13 @@ def lista_cajas(request):
     return render(request, 'lista_cajas.html', {
         'saldo_general': saldo_general,
         'saldo_parcial': saldo_parcial,
-        'cajas': cajas,
+        'cajas_por_fecha': cajas_por_fecha,
         'hay_cajas_extras_disponibles': hay_cajas_extras_disponibles,
         'hay_cajas_abiertas': hay_cajas_abiertas,
-        'hay_alguna_caja_cerrada': hay_alguna_caja_cerrada
+        'hay_alguna_caja_cerrada': hay_alguna_caja_cerrada,
+        'today': today,
+        'fechas_disponibles': fechas_disponibles,
+        'fecha_filtro': fecha_filtro
     })
 
 @admin_o_encargado
