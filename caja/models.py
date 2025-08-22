@@ -32,6 +32,14 @@ class CajaDiaria(models.Model):
     class Meta:
         unique_together = ['fecha', 'turno', 'nivel', 'es_extra']
         ordering = ['-fecha', 'turno']
+        # Asegurar que no puede haber dos cajas abiertas del mismo nivel y turno
+        constraints = [
+            models.UniqueConstraint(
+                fields=['nivel', 'turno'],
+                condition=models.Q(cerrada=False),
+                name='unique_open_caja_nivel_turno'
+            )
+        ]
 
     def clean(self):
         # Si estamos creando una nueva caja (sin ID aún)
@@ -79,6 +87,17 @@ class CajaDiaria(models.Model):
             # Si es una caja normal, verificar que no exista otra caja normal
             elif not self.es_extra and queryset.filter(es_extra=False).exists():
                 raise ValidationError('Ya existe una caja normal para esta fecha, turno y nivel')
+        
+        # Validar que no exista otra caja abierta del mismo nivel y turno
+        if not self.cerrada:
+            caja_abierta = CajaDiaria.objects.filter(
+                nivel=self.nivel,
+                turno=self.turno,
+                cerrada=False
+            ).exclude(pk=self.pk).exists()
+            
+            if caja_abierta:
+                raise ValidationError('Ya existe una caja abierta para este nivel y turno')
 
     def __str__(self):
         return f"{self.fecha} - {self.get_turno_display()} - {self.get_nivel_display()}"

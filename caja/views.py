@@ -9,6 +9,7 @@ from .forms import InicioCajaForm, InicioCajaExtraForm, RecreoForm, EventoEspeci
 from django import forms
 from usuarios.decorators import solo_admin, admin_o_encargado
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 class SaldoGeneralForm(forms.Form):
     monto = forms.DecimalField(
@@ -121,63 +122,99 @@ def lista_cajas(request):
             hay_cajas_extras_disponibles = True
             break
     
-    return render(request, 'lista_cajas.html', {
-        'saldo_general': saldo_general,
-        'saldo_parcial': saldo_parcial,
+    # Obtener todas las cajas no cerradas (en proceso)
+    cajas_abiertas = CajaDiaria.objects.filter(cerrada=False)
+    hay_cajas_abiertas = cajas_abiertas.exists()
+
+    # Verificar si hay cajas del mismo nivel y turno abiertas
+    def hay_caja_abierta_mismo_nivel_turno(nivel, turno):
+        return CajaDiaria.objects.filter(
+            nivel=nivel,
+            turno=turno,
+            cerrada=False
+        ).exists()
+
+    # Preparar el contexto para verificar las restricciones
+    context = {
         'cajas_por_fecha': cajas_por_fecha,
-        'hay_cajas_extras_disponibles': hay_cajas_extras_disponibles,
-        'hay_cajas_abiertas': hay_cajas_abiertas,
-        'hay_alguna_caja_cerrada': hay_alguna_caja_cerrada,
-        'today': today,
         'fechas_disponibles': fechas_disponibles,
-        'fecha_filtro': fecha_filtro
-    })
+        'fecha_filtro': fecha_filtro,
+        'saldo_general': saldo_general,
+        'hay_cajas_abiertas': hay_cajas_abiertas,
+        'saldo_parcial': saldo_parcial if hay_cajas_abiertas else 0,
+        # Nueva función para verificar en el template
+        'hay_caja_mismo_nivel_turno': hay_caja_abierta_mismo_nivel_turno,
+        'hay_cajas_extras_disponibles': hay_cajas_extras_disponibles,
+    }
+
+    return render(request, 'lista_cajas.html', context)
+
+def iniciar_caja(request):
+    if request.method == 'POST':
+        nivel = request.POST.get('nivel')
+        turno = request.POST.get('turno')
+        
+        # Verificar si ya existe una caja abierta del mismo nivel y turno
+        if CajaDiaria.objects.filter(nivel=nivel, turno=turno, cerrada=False).exists():
+            messages.error(request, 'Ya existe una caja abierta para este nivel y turno')
+            return redirect('caja:lista_cajas')
+        
+        # Si no existe, crear la nueva caja
+        caja = CajaDiaria.objects.create(
+            nivel=nivel,
+            turno=turno,
+            fecha=timezone.now().date()
+        )
+        messages.success(request, 'Caja iniciada correctamente')
+        return redirect('caja:registrar_movimientos', caja_id=caja.id)
+
+    return render(request, 'iniciar_caja.html')
 
 @admin_o_encargado
 def iniciar_caja(request):
-    """Vista para iniciar una caja normal"""
-    import datetime
-    today = datetime.date.today()
-    
-    # Verificar si hay cajas abiertas (en proceso)
-    hay_cajas_abiertas = CajaDiaria.objects.filter(cerrada=False).exists()
-    if hay_cajas_abiertas:
-        messages.error(request, "No se puede iniciar una nueva caja mientras haya cajas en proceso")
-        return redirect('caja:lista_cajas')
-    
-    saldo_general = SaldoGeneral.objects.first()
-    if not saldo_general:
-        saldo_general = SaldoGeneral.objects.create()
+    from django.utils import timezone
     
     if request.method == 'POST':
         form = InicioCajaForm(request.POST)
         if form.is_valid():
-            # Crear y guardar la caja normal
-            caja = form.save(commit=False)
-            caja.es_extra = False  # Asegurarnos que sea caja normal
+            nivel = form.cleaned_data['nivel']
+            turno = form.cleaned_data['turno']
             
-            # Solo asignar saldo inicial si es caja secundaria
+            # Verificar si hay una caja abierta del mismo nivel y turno
+            caja_existente = CajaDiaria.objects.filter(
+                nivel=nivel, 
+                turno=turno,
+                cerrada=False
+            ).exists()
+            
+            if caja_existente:
+                messages.error(request, 'Ya existe una caja abierta para este nivel y turno')
+                return redirect('caja:lista_cajas')
+            
+            # Crear la nueva caja sin mostrar el saldo inicial
+            caja = form.save(commit=False)
+            caja.fecha = timezone.now().date()
+            
+            # Si es nivel secundario, podríamos calcular saldo inicial automáticamente
             if caja.nivel == 'S':
-                caja.saldo_inicial = saldo_general.monto
-            else:
-                caja.saldo_inicial = Decimal('0')
+                ultima_caja = CajaDiaria.objects.filter(
+                    nivel='S',
+                    turno=caja.turno,
+                    cerrada=True
+                ).order_by('-fecha').first()
                 
-            try:
-                caja.save()  # Intentar guardar la caja
-                messages.success(request, 'Caja iniciada correctamente')
-                return redirect('caja:registrar_movimientos', caja_id=caja.id)
-            except ValidationError as e:
-                form.add_error(None, e)  # Añadir error al formulario
-            except Exception as e:
-                messages.error(request, f"Error inesperado: {str(e)}")
+                if ultima_caja:
+                    caja.saldo_inicial = ultima_caja.saldo_parcial
+            
+            caja.save()
+            messages.success(request, 'Caja iniciada correctamente')
+            return redirect('caja:registrar_movimientos', caja_id=caja.id)
     else:
         form = InicioCajaForm()
     
     return render(request, 'iniciar_caja.html', {
         'form': form,
-        'saldo_general': saldo_general,
-        'es_caja_extra': False,
-        'today': today
+        'fecha_actual': timezone.now().date()
     })
 
 @admin_o_encargado
