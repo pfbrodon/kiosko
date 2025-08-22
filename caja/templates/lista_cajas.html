@@ -1,26 +1,12 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/lista_cajas.css' %}">
+{% endblock %}
+
 {% block content %}
-<style>
-    .fecha-grupo {
-        margin-bottom: 2.5rem;
-        padding-bottom: 0.5rem;
-    }
-    .fecha-grupo:last-child {
-        margin-bottom: 0;
-    }
-    .fecha-grupo h5 {
-        position: relative;
-        padding-left: 0.5rem;
-    }
-    .fecha-grupo h5.text-primary {
-        border-bottom-color: #0d6efd !important;
-        border-bottom-width: 2px !important;
-    }
-    .table-hover tbody tr:hover {
-        background-color: rgba(0, 123, 255, 0.05);
-    }
-</style>
 <div class="container-xl mt-4">
     <!-- Header con Saldo General y Parcial -->
     <div class="row mb-4">
