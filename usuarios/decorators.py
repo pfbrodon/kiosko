@@ -1,3 +1,5 @@
+def admin_encargado_vendedor(view_func):
+    return rol_requerido('admin', 'encargado', 'vendedor')(view_func)
 from django.contrib.auth.decorators import user_passes_test
 from django.core.exceptions import PermissionDenied
 

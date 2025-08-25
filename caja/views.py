@@ -170,7 +170,8 @@ def iniciar_caja(request):
 
     return render(request, 'iniciar_caja.html')
 
-@admin_o_encargado
+from usuarios.decorators import admin_encargado_vendedor
+@admin_encargado_vendedor
 def iniciar_caja(request):
     from django.utils import timezone
     
@@ -195,16 +196,23 @@ def iniciar_caja(request):
             caja = form.save(commit=False)
             caja.fecha = timezone.now().date()
             
-            # Si es nivel secundario, podríamos calcular saldo inicial automáticamente
+            # Si es nivel secundario, el saldo inicial siempre es el saldo general
             if caja.nivel == 'S':
-                ultima_caja = CajaDiaria.objects.filter(
-                    nivel='S',
-                    turno=caja.turno,
-                    cerrada=True
-                ).order_by('-fecha').first()
-                
-                if ultima_caja:
-                    caja.saldo_inicial = ultima_caja.saldo_parcial
+                saldo_general = SaldoGeneral.objects.first()
+                if saldo_general:
+                    caja.saldo_inicial = saldo_general.saldo
+                else:
+                    caja.saldo_inicial = 0
+                # Si es turno tarde, no permitir si hay caja secundaria del turno mañana activa
+                if caja.turno == 'T':
+                    caja_manana_abierta = CajaDiaria.objects.filter(
+                        nivel='S',
+                        turno='M',
+                        cerrada=False
+                    ).exists()
+                    if caja_manana_abierta:
+                        messages.error(request, 'No se puede abrir caja del turno tarde si hay una caja del turno mañana activa.')
+                        return redirect('caja:lista_cajas')
             
             caja.save()
             messages.success(request, 'Caja iniciada correctamente')
