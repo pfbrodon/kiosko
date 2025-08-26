@@ -200,7 +200,7 @@ def iniciar_caja(request):
             if caja.nivel == 'S':
                 saldo_general = SaldoGeneral.objects.first()
                 if saldo_general:
-                    caja.saldo_inicial = saldo_general.saldo
+                    caja.saldo_inicial = saldo_general.monto
                 else:
                     caja.saldo_inicial = 0
                 # Si es turno tarde, no permitir si hay caja secundaria del turno mañana activa
