@@ -31,6 +31,15 @@ class SaldoGeneralForm(forms.Form):
 
 @login_required
 def lista_cajas(request):
+    # Detectar si hay cajas abiertas en primario y secundario en el mismo turno
+    turnos = ['M', 'T']
+    caja_abierta_ambos_niveles_mismo_turno = False
+    for turno in turnos:
+        hay_primario = CajaDiaria.objects.filter(turno=turno, nivel='P', cerrada=False).exists()
+        hay_secundario = CajaDiaria.objects.filter(turno=turno, nivel='S', cerrada=False).exists()
+        if hay_primario and hay_secundario:
+            caja_abierta_ambos_niveles_mismo_turno = True
+            break
     import datetime
     from itertools import groupby
     from operator import attrgetter
@@ -65,10 +74,14 @@ def lista_cajas(request):
     cajas_por_fecha = []
     for fecha, grupo in groupby(cajas, key=attrgetter('fecha')):
         cajas_grupo = list(grupo)
+        total_ingresos_dia = sum(caja.get_total_ingresos() for caja in cajas_grupo)
+        total_egresos_dia = sum(caja.get_total_egresos() for caja in cajas_grupo)
         cajas_por_fecha.append({
             'fecha': fecha,
             'cajas': cajas_grupo,
-            'es_hoy': fecha == today
+            'es_hoy': fecha == today,
+            'total_ingresos': total_ingresos_dia,
+            'total_egresos': total_egresos_dia
         })
     
     # Verificar si hay cajas abiertas (en proceso)
@@ -142,9 +155,9 @@ def lista_cajas(request):
         'saldo_general': saldo_general,
         'hay_cajas_abiertas': hay_cajas_abiertas,
         'saldo_parcial': saldo_parcial if hay_cajas_abiertas else 0,
-        # Nueva función para verificar en el template
         'hay_caja_mismo_nivel_turno': hay_caja_abierta_mismo_nivel_turno,
         'hay_cajas_extras_disponibles': hay_cajas_extras_disponibles,
+        'caja_abierta_ambos_niveles_mismo_turno': caja_abierta_ambos_niveles_mismo_turno,
     }
 
     return render(request, 'lista_cajas.html', context)
