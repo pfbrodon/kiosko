@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Precios</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 13px; }
+        h2 { margin-top: 2em; color: #0d6efd; border-bottom: 1px solid #ccc; padding-bottom: 0.2em; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 1.5em; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+        th { background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Lista de Precios</h1>
+    {% for subcat in subcategorias %}
+        <h2>{{ subcat.nombre }}</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Precio Venta al Público</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for producto in subcat.productos %}
+                <tr>
+                    <td>{{ producto.nombre }}</td>
+                    <td>${{ producto.precio_venta_final|floatformat:2 }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="2">Sin productos en esta subcategoría</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+</body>
+</html>

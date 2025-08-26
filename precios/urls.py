@@ -20,6 +20,5 @@ urlpatterns = [
     path('marca/crear/', views.crear_marca, name='crear_marca'),
     path('marcas/<int:pk>/editar/', views.editar_marca, name='editar_marca'),
     path('marcas/<int:pk>/eliminar/', views.eliminar_marca, name='eliminar_marca'),
-    
-    
+    path('productos/lista-precios-pdf/', views.lista_precios_pdf, name='lista_precios_pdf'),
 ]

@@ -4,6 +4,13 @@ from django.contrib.auth.decorators import login_required
 from usuarios.decorators import admin_o_encargado, solo_admin
 from .models import Producto, Categoria, Proveedor, Subcategoria, Marca, MovimientoStock
 from .forms import ProductoForm, ProductoSearchForm, SubcategoriaForm, CategoriaForm, ProveedorForm, MarcaForm, MovimientoStockForm
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+from reportlab.lib import colors
+from io import BytesIO
 
 # Create your views here.
 
@@ -265,3 +272,68 @@ def eliminar_marca(request, pk):
         marca.delete()
         messages.success(request, f'La marca {marca.nombre} ha sido eliminada.')
     return redirect('lista_marcas')
+
+@login_required
+def lista_precios_pdf(request):
+    from .models import Subcategoria
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    margin_x = 30
+    gutter = 18  # espacio entre columnas
+    col_width = (width - 2 * margin_x - gutter) / 2
+    col_positions = [margin_x, margin_x + col_width + gutter]
+    y_start = height - 30
+    y = y_start
+    col = 0
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(margin_x, y, "Lista de Precios")
+    y -= 30
+    p.setFont("Helvetica", 11)
+    subcategorias = Subcategoria.objects.all().order_by('nombre')
+    for subcat in subcategorias:
+        productos = subcat.productos.all().order_by('nombre')
+        if not productos:
+            continue
+        if y < 80:
+            col += 1
+            if col > 1:
+                p.showPage()
+                col = 0
+            y = y_start
+        x = col_positions[col]
+        p.setFont("Helvetica-Bold", 12)
+        p.setFillColor(colors.HexColor('#0d6efd'))
+        p.drawString(x, y, subcat.nombre)
+        y -= 18
+        p.setFont("Helvetica-Bold", 11)
+        p.setFillColor(colors.black)
+        p.drawString(x + 5, y, "Producto")
+        p.drawRightString(x + col_width - 5, y, "Precio Venta al Público")
+        y -= 14
+        p.setFont("Helvetica", 10)
+        for producto in productos:
+            if y < 50:
+                col += 1
+                if col > 1:
+                    p.showPage()
+                    col = 0
+                y = y_start
+                x = col_positions[col]
+                p.setFont("Helvetica-Bold", 12)
+                p.setFillColor(colors.HexColor('#0d6efd'))
+                p.drawString(x, y, subcat.nombre + " (cont.)")
+                y -= 18
+                p.setFont("Helvetica-Bold", 11)
+                p.setFillColor(colors.black)
+                p.drawString(x + 5, y, "Producto")
+                p.drawRightString(x + col_width - 5, y, "Precio Venta al Público")
+                y -= 14
+                p.setFont("Helvetica", 10)
+            p.drawString(x + 5, y, producto.nombre[:38])  # recorta si es muy largo
+            p.drawRightString(x + col_width - 5, y, f"${producto.precio_venta_final:.2f}")
+            y -= 13
+        y -= 10
+    p.save()
+    buffer.seek(0)
+    return HttpResponse(buffer, content_type='application/pdf')
