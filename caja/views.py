@@ -1,6 +1,7 @@
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal
@@ -8,8 +9,33 @@ from .models import SaldoGeneral, CajaDiaria, Recreo, EventoEspecial, PagoProvee
 from .forms import InicioCajaForm, InicioCajaExtraForm, RecreoForm, EventoEspecialForm, PagoProveedorForm
 from django import forms
 from usuarios.decorators import solo_admin, admin_o_encargado
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from precios.models import Proveedor
+
+# Vista de egresos por proveedor y fechas
+@login_required
+def egresos_por_proveedor(request):
+    proveedores = Proveedor.objects.all()
+    pagos = []
+    total_egresos = 0
+    filtro = Q()
+    proveedor_id = request.GET.get('proveedor')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    if proveedor_id:
+        filtro &= Q(proveedor_id=proveedor_id)
+    if fecha_inicio:
+        filtro &= Q(fecha_registro__date__gte=fecha_inicio)
+    if fecha_fin:
+        filtro &= Q(fecha_registro__date__lte=fecha_fin)
+    if proveedor_id or fecha_inicio or fecha_fin:
+        pagos = PagoProveedor.objects.filter(filtro).select_related('proveedor')
+        total_egresos = pagos.aggregate(total=Sum('monto'))['total'] or 0
+    return render(request, 'egresos_por_proveedor.html', {
+        'proveedores': proveedores,
+        'pagos': pagos,
+        'total_egresos': total_egresos,
+    })
 
 class SaldoGeneralForm(forms.Form):
     monto = forms.DecimalField(

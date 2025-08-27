@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Egresos por Proveedor{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Egresos por Proveedor</h2>
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label for="proveedor" class="form-label">Proveedor</label>
+            <select name="proveedor" id="proveedor" class="form-select">
+                <option value="">Todos</option>
+                {% for prov in proveedores %}
+                <option value="{{ prov.id }}" {% if prov.id|stringformat:'s' == request.GET.proveedor %}selected{% endif %}>{{ prov.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="fecha_inicio" class="form-label">Desde</label>
+            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ request.GET.fecha_inicio }}">
+        </div>
+        <div class="col-md-3">
+            <label for="fecha_fin" class="form-label">Hasta</label>
+            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ request.GET.fecha_fin }}">
+        </div>
+        <div class="col-md-2 align-self-end">
+            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+    </form>
+    {% if pagos %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Proveedor</th>
+                    <th>Monto</th>
+                    <th>Comprobante</th>
+                    <th>Observación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pago in pagos %}
+                <tr>
+                    <td>{{ pago.fecha_registro|date:'d/m/Y' }}</td>
+                    <td>{{ pago.proveedor.nombre }}</td>
+                    <td>${{ pago.monto }}</td>
+                    <td>{{ pago.comprobante }}</td>
+                    <td>{{ pago.observacion }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="2">Total</th>
+                    <th colspan="3">${{ total_egresos }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% elif request.GET %}
+        <div class="alert alert-info">No se encontraron egresos para los filtros seleccionados.</div>
+    {% endif %}
+</div>
+{% endblock %}

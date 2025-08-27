@@ -15,4 +15,5 @@ urlpatterns = [
     path('caja/<int:caja_id>/ver/', views.ver_movimientos_caja, name='ver_movimientos_caja'),
     path('limpiar/', views.limpiar_cajas, name='limpiar_cajas'),
     path('caja-extra/<int:caja_id>/eliminar/', views.eliminar_caja_extra, name='eliminar_caja_extra'),
+    path('egresos-proveedor/', views.egresos_por_proveedor, name='egresos_por_proveedor'),
 ]
