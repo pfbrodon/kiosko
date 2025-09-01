@@ -221,6 +221,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const precioConDescuentoDisplay = document.getElementById('precioConDescuento');
     const precioSugeridoDisplay = document.getElementById('precioSugerido');
 
+    // DETECTAR SI ESTAMOS EDITANDO O CREANDO
+    const isEditing = {{ editing|yesno:"true,false" }};
+    let precioOriginal = null;
+    let precioModificadoManualmente = false;
+
+    // Si estamos editando, guardar el precio original
+    if (isEditing) {
+        precioOriginal = parseFloat(precioVentaInput.value) || 0;
+        
+        // Detectar cambios manuales en el precio
+        precioVentaInput.addEventListener('focus', function() {
+            // Marcar el valor actual como punto de referencia
+            this.dataset.valorAnterior = this.value;
+        });
+        
+        precioVentaInput.addEventListener('input', function() {
+            const valorAnterior = parseFloat(this.dataset.valorAnterior) || precioOriginal;
+            const valorActual = parseFloat(this.value) || 0;
+            
+            // Si el usuario cambió el valor manualmente, marcarlo
+            if (Math.abs(valorActual - valorAnterior) > 0.01) {
+                precioModificadoManualmente = true;
+            }
+        });
+    }
+
     function toggleUnidadesPorPaquete() {
         // Mostrar/ocultar campo de unidades según tipo de compra
         if (tipoCompraSelect.value === 'U') {
@@ -256,8 +282,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const precioSugerido = precioConDescuento * (1 + margen/100);
         precioSugeridoDisplay.value = `$${precioSugerido.toFixed(2)}`;
 
-        // 4. Actualizar precio de venta sugerido
-        precioVentaInput.value = precioSugerido.toFixed(2);
+        // 4. SOLO actualizar precio de venta si NO estamos editando O si no fue modificado manualmente
+        if (!isEditing || !precioModificadoManualmente) {
+            // Si estamos editando y el usuario no modificó el precio, mantener el original
+            if (isEditing && !precioModificadoManualmente) {
+                precioVentaInput.value = precioOriginal.toFixed(2);
+            } else {
+                // Si estamos creando un producto nuevo, usar el precio sugerido
+                precioVentaInput.value = precioSugerido.toFixed(2);
+            }
+        }
     }
 
     // Event listeners
@@ -266,6 +300,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Calcular precios cuando cambie cualquier valor
     [precioCompraInput, unidadesInput, descuentoInput, margenInput].forEach(input => {
         input.addEventListener('input', calcularPrecios);
+    });
+
+    // Al enviar el formulario, si estamos editando y no se modificó manualmente, usar el precio original
+    document.querySelector('form').addEventListener('submit', function(e) {
+        if (isEditing && !precioModificadoManualmente && precioOriginal !== null) {
+            precioVentaInput.value = precioOriginal.toFixed(2);
+        }
     });
 
     // Inicialización

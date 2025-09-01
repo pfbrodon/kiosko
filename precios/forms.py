@@ -25,7 +25,7 @@ class ProductoForm(forms.ModelForm):
             'tipo_venta',
             'margen_ganancia',
             'precio_venta_final',
-            'stock_inicial',  # Reemplazamos cantidad_stock por stock_inicial
+            'stock_inicial',
             'stock_minimo',
             'activo'
         ]
@@ -60,11 +60,42 @@ class ProductoForm(forms.ModelForm):
             self.fields['stock_inicial'].required = False
             # Establecemos el valor inicial del campo
             self.fields['stock_inicial'].initial = instance.cantidad_stock
+            
+            # PRESERVAR EL PRECIO DE VENTA ACTUAL AL EDITAR
+            self._precio_venta_original = instance.precio_venta_final
+            
+            # Forzar el valor inicial del precio de venta final
+            self.fields['precio_venta_final'].initial = instance.precio_venta_final
+            
+            # Agregar atributo data para JavaScript
+            self.fields['precio_venta_final'].widget.attrs.update({
+                'data-precio-original': str(instance.precio_venta_final),
+                'data-editing': 'true'
+            })
+        
         # Agregar clases de Bootstrap excepto para el campo activo
         for field in self.fields:
-            if field != 'activo':  # Excluir el campo activo
+            if field != 'activo':
                 self.fields[field].widget.attrs.update({'class': 'form-control'})
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        # Si estamos editando, usar el precio original a menos que haya sido cambiado manualmente
+        if hasattr(self, '_precio_venta_original') and self.instance.pk:
+            # Verificar si el precio fue modificado intencionalmente
+            precio_form = self.cleaned_data.get('precio_venta_final')
             
+            # Si el precio no cambió o es None, usar el original
+            if not precio_form or precio_form == self._precio_venta_original:
+                instance.precio_venta_final = self._precio_venta_original
+            else:
+                instance.precio_venta_final = precio_form
+        
+        if commit:
+            instance.save()
+        return instance
+
 class SubcategoriaForm(forms.ModelForm):
     class Meta:
         model = Subcategoria
