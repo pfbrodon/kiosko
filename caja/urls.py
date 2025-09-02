@@ -16,4 +16,9 @@ urlpatterns = [
     path('limpiar/', views.limpiar_cajas, name='limpiar_cajas'),
     path('caja-extra/<int:caja_id>/eliminar/', views.eliminar_caja_extra, name='eliminar_caja_extra'),
     path('egresos-proveedor/', views.egresos_por_proveedor, name='egresos_por_proveedor'),
+    path('billetera/', views.billetera_electronica, name='billetera_electronica'),
+    path('billetera/abrir/', views.abrir_billetera, name='abrir_billetera'),
+    path('billetera/movimiento/', views.nuevo_movimiento_billetera, name='nuevo_movimiento_billetera'),
+    path('billetera/cerrar/<int:billetera_id>/', views.cerrar_billetera, name='cerrar_billetera'),
+    path('billetera/historial/', views.historial_billeteras, name='historial_billeteras'),
 ]

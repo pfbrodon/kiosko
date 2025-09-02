@@ -61,6 +61,13 @@
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
+                            <!-- AGREGAR ESTE ENLACE AQUÍ -->
+                            <li>
+                                <a class="dropdown-item" href="{% url 'caja:billetera_electronica' %}">
+                                    <i class="fas fa-wallet"></i> Billetera Electrónica
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
                             {% if user.perfil.rol == 'admin' %}
                             <li>
                                 <a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#modalLimpiarCajas">

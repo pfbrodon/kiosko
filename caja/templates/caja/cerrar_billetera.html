@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %} - Cerrar Billetera{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4><i class="fas fa-lock"></i> Cerrar Billetera Electrónica</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <strong>¡Atención!</strong> Está a punto de cerrar la billetera electrónica.
+                        Esta acción no se puede deshacer.
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <strong>Fecha de apertura:</strong><br>
+                            {{ billetera.fecha_apertura|date:"d/m/Y" }}
+                        </div>
+                        <div class="col-6">
+                            <strong>Saldo inicial:</strong><br>
+                            ${{ billetera.saldo_inicial|floatformat:2 }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <strong>Saldo actual:</strong><br>
+                            <h4 class="text-success">${{ billetera.saldo_actual|floatformat:2 }}</h4>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-lock"></i> Confirmar Cierre
+                            </button>
+                            <a href="{% url 'caja:billetera_electronica' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

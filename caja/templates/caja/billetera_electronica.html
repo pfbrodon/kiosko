@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %} - Billetera Electrónica{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-wallet"></i> Billetera Electrónica</h2>
+        <div>
+            {% if user.perfil.rol == 'admin' %}
+                {% if not billetera_activa %}
+                <a href="{% url 'caja:abrir_billetera' %}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Abrir Billetera
+                </a>
+                {% endif %}
+            {% endif %}
+            <a href="{% url 'caja:historial_billeteras' %}" class="btn btn-info">
+                <i class="fas fa-history"></i> Historial
+            </a>
+        </div>
+    </div>
+
+    {% if billetera_activa %}
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Saldo Inicial</h5>
+                    <h3>${{ billetera_activa.saldo_inicial|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Saldo Actual</h5>
+                    <h3>${{ billetera_activa.saldo_actual|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Fecha Apertura</h5>
+                    <h3>{{ billetera_activa.fecha_apertura|date:"d/m/Y" }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <a href="{% url 'caja:nuevo_movimiento_billetera' %}" class="btn btn-primary btn-lg w-100">
+                <i class="fas fa-exchange-alt"></i> Nuevo Movimiento
+            </a>
+        </div>
+        <div class="col-md-6">
+            {% if user.perfil.rol == 'admin' %}
+            <a href="{% url 'caja:cerrar_billetera' billetera_activa.id %}" class="btn btn-danger btn-lg w-100">
+                <i class="fas fa-lock"></i> Cerrar Billetera
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>Movimientos Recientes</h5>
+        </div>
+        <div class="card-body">
+            {% if movimientos_recientes %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Fecha/Hora</th>
+                            <th>Tipo</th>
+                            <th>Operación</th>
+                            <th>Descripción</th>
+                            <th>Proveedor</th>
+                            <th>Monto</th>
+                            <th>Usuario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movimiento in movimientos_recientes %}
+                        <tr>
+                            <td>{{ movimiento.fecha_hora|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <span class="badge {% if movimiento.tipo_movimiento == 'ingreso' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ movimiento.get_tipo_movimiento_display }}
+                                </span>
+                            </td>
+                            <td>{{ movimiento.get_tipo_operacion_display }}</td>
+                            <td>{{ movimiento.descripcion|truncatechars:50 }}</td>
+                            <td>{{ movimiento.proveedor.nombre|default:"-" }}</td>
+                            <td class="{% if movimiento.tipo_movimiento == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
+                                {% if movimiento.tipo_movimiento == 'ingreso' %}+{% else %}-{% endif %}${{ movimiento.monto|floatformat:2 }}
+                            </td>
+                            <td>{{ movimiento.usuario.username }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center text-muted">No hay movimientos registrados</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% else %}
+    <div class="alert alert-warning text-center">
+        <h4>No hay billetera activa</h4>
+        <p>Para comenzar a trabajar con la billetera electrónica, debe abrir una nueva.</p>
+        {% if user.perfil.rol == 'admin' %}
+        <a href="{% url 'caja:abrir_billetera' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Abrir Billetera
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

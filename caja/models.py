@@ -2,6 +2,8 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from decimal import Decimal
+from django.contrib.auth.models import User
+from django.utils import timezone
 
 class SaldoGeneral(models.Model):
     monto = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -178,3 +180,61 @@ class PagoProveedor(models.Model):
     comprobante = models.CharField(max_length=50)
     observacion = models.TextField(blank=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
+
+class BilleteraElectronica(models.Model):
+    fecha_apertura = models.DateField(default=timezone.now)
+    saldo_inicial = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    saldo_actual = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cerrada = models.BooleanField(default=False)
+    fecha_cierre = models.DateTimeField(null=True, blank=True)
+    usuario_apertura = models.ForeignKey(User, on_delete=models.CASCADE, related_name='billeteras_abiertas')
+    usuario_cierre = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='billeteras_cerradas')
+    
+    class Meta:
+        ordering = ['-fecha_apertura']
+    
+    def __str__(self):
+        return f"Billetera {self.fecha_apertura} - {'Cerrada' if self.cerrada else 'Abierta'}"
+    
+    def save(self, *args, **kwargs):
+        if not self.pk:  # Si es una nueva instancia
+            self.saldo_actual = self.saldo_inicial
+        super().save(*args, **kwargs)
+
+class MovimientoBilletera(models.Model):
+    TIPO_MOVIMIENTO = [
+        ('ingreso', 'Ingreso'),
+        ('egreso', 'Egreso'),
+    ]
+    
+    TIPO_OPERACION = [
+        ('transferencia', 'Transferencia'),
+        ('pago_proveedor', 'Pago a Proveedor'),
+        ('otro', 'Otro'),
+    ]
+    
+    billetera = models.ForeignKey(BilleteraElectronica, on_delete=models.CASCADE, related_name='movimientos')
+    tipo_movimiento = models.CharField(max_length=10, choices=TIPO_MOVIMIENTO)
+    tipo_operacion = models.CharField(max_length=20, choices=TIPO_OPERACION)
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    descripcion = models.TextField()
+    comprobante = models.CharField(max_length=100, blank=True, null=True)
+    proveedor = models.ForeignKey('precios.Proveedor', on_delete=models.SET_NULL, null=True, blank=True)
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    class Meta:
+        ordering = ['-fecha_hora']
+    
+    def __str__(self):
+        return f"{self.get_tipo_movimiento_display()} - ${self.monto} - {self.descripcion[:50]}"
+    
+    def save(self, *args, **kwargs):
+        # Actualizar saldo de la billetera
+        if not self.pk:  # Solo si es un nuevo movimiento
+            if self.tipo_movimiento == 'ingreso':
+                self.billetera.saldo_actual += self.monto
+            else:  # egreso
+                self.billetera.saldo_actual -= self.monto
+            self.billetera.save()
+        super().save(*args, **kwargs)

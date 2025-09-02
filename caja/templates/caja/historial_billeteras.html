@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %} - Historial Billeteras{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-history"></i> Historial de Billeteras</h2>
+        <a href="{% url 'caja:billetera_electronica' %}" class="btn btn-primary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    {% if billeteras %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Fecha Apertura</th>
+                    <th>Fecha Cierre</th>
+                    <th>Saldo Inicial</th>
+                    <th>Saldo Final</th>
+                    <th>Diferencia</th>
+                    <th>Usuario Apertura</th>
+                    <th>Usuario Cierre</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for billetera in billeteras %}
+                <tr>
+                    <td>{{ billetera.fecha_apertura|date:"d/m/Y" }}</td>
+                    <td>{{ billetera.fecha_cierre|date:"d/m/Y H:i" }}</td>
+                    <td>${{ billetera.saldo_inicial|floatformat:2 }}</td>
+                    <td>${{ billetera.saldo_actual|floatformat:2 }}</td>
+                    <td class="{% if billetera.saldo_actual >= billetera.saldo_inicial %}text-success{% else %}text-danger{% endif %}">
+                        {% widthratio billetera.saldo_actual 1 1 as saldo_final %}
+                        {% widthratio billetera.saldo_inicial 1 1 as saldo_inicial %}
+                        {% widthratio saldo_final 1 1 as diferencia %}
+                        {% widthratio saldo_inicial 1 1 as diferencia_negativa %}
+                        ${{ diferencia|add:diferencia_negativa|floatformat:2 }}
+                    </td>
+                    <td>{{ billetera.usuario_apertura.username }}</td>
+                    <td>{{ billetera.usuario_cierre.username }}</td>
+                    <td>
+                        <button class="btn btn-info btn-sm" onclick="verDetalles({{ billetera.id }})">
+                            <i class="fas fa-eye"></i> Ver Detalles
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        <h4>No hay historial disponible</h4>
+        <p>Aún no se han cerrado billeteras electrónicas.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function verDetalles(billeteraId) {
+    // Aquí puedes implementar un modal o redirección para ver detalles
+    alert('Funcionalidad de detalles pendiente de implementar para billetera ID: ' + billeteraId);
+}
+</script>
+{% endblock %}

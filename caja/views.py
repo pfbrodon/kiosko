@@ -1,12 +1,11 @@
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum, Q
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal
-from .models import SaldoGeneral, CajaDiaria, Recreo, EventoEspecial, PagoProveedor
-from .forms import InicioCajaForm, InicioCajaExtraForm, RecreoForm, EventoEspecialForm, PagoProveedorForm
+from .models import SaldoGeneral, CajaDiaria, Recreo, EventoEspecial, PagoProveedor, BilleteraElectronica, MovimientoBilletera
+from .forms import InicioCajaForm, InicioCajaExtraForm, RecreoForm, EventoEspecialForm, PagoProveedorForm, AbrirBilleteraForm, MovimientoBilleteraForm
 from django import forms
 from usuarios.decorators import solo_admin, admin_o_encargado
 from django.utils import timezone
@@ -673,3 +672,116 @@ def editar_recreo(request, recreo_id):
         'recreo': recreo,
         'caja': caja
     })
+
+@login_required
+def billetera_electronica(request):
+    """Vista principal de la billetera electrónica"""
+    # Verificar permisos
+    if not (request.user.perfil and request.user.perfil.rol in ['admin', 'encargado']):
+        messages.error(request, 'No tienes permisos para acceder a la billetera electrónica.')
+        return redirect('home')
+    
+    billetera_activa = BilleteraElectronica.objects.filter(cerrada=False).first()
+    movimientos_recientes = []
+    
+    if billetera_activa:
+        movimientos_recientes = MovimientoBilletera.objects.filter(
+            billetera=billetera_activa
+        )[:10]
+    
+    context = {
+        'billetera_activa': billetera_activa,
+        'movimientos_recientes': movimientos_recientes,
+    }
+    return render(request, 'caja/billetera_electronica.html', context)
+
+@login_required
+def abrir_billetera(request):
+    """Abrir nueva billetera electrónica"""
+    if not (request.user.perfil and request.user.perfil.rol == 'admin'):
+        messages.error(request, 'Solo los administradores pueden abrir billeteras.')
+        return redirect('caja:billetera_electronica')
+    
+    # Verificar que no haya billetera abierta
+    if BilleteraElectronica.objects.filter(cerrada=False).exists():
+        messages.error(request, 'Ya existe una billetera abierta.')
+        return redirect('caja:billetera_electronica')
+    
+    if request.method == 'POST':
+        form = AbrirBilleteraForm(request.POST)
+        if form.is_valid():
+            billetera = form.save(commit=False)
+            billetera.usuario_apertura = request.user
+            billetera.save()
+            messages.success(request, 'Billetera electrónica abierta correctamente.')
+            return redirect('caja:billetera_electronica')
+    else:
+        form = AbrirBilleteraForm()
+    
+    return render(request, 'caja/abrir_billetera.html', {'form': form})
+
+@login_required
+def nuevo_movimiento_billetera(request):
+    """Crear nuevo movimiento en billetera"""
+    if not (request.user.perfil and request.user.perfil.rol in ['admin', 'encargado']):
+        messages.error(request, 'No tienes permisos para realizar movimientos.')
+        return redirect('caja:billetera_electronica')
+    
+    billetera_activa = BilleteraElectronica.objects.filter(cerrada=False).first()
+    if not billetera_activa:
+        messages.error(request, 'No hay billetera activa.')
+        return redirect('caja:billetera_electronica')
+    
+    if request.method == 'POST':
+        form = MovimientoBilleteraForm(request.POST)
+        if form.is_valid():
+            movimiento = form.save(commit=False)
+            movimiento.billetera = billetera_activa
+            movimiento.usuario = request.user
+            movimiento.save()
+            messages.success(request, 'Movimiento registrado correctamente.')
+            return redirect('caja:billetera_electronica')
+    else:
+        form = MovimientoBilleteraForm()
+    
+    return render(request, 'caja/nuevo_movimiento_billetera.html', {
+        'form': form,
+        'billetera': billetera_activa
+    })
+
+@login_required
+def cerrar_billetera(request, billetera_id):
+    """Cerrar billetera electrónica"""
+    if not (request.user.perfil and request.user.perfil.rol == 'admin'):
+        messages.error(request, 'Solo los administradores pueden cerrar billeteras.')
+        return redirect('caja:billetera_electronica')
+    
+    billetera = get_object_or_404(BilleteraElectronica, id=billetera_id, cerrada=False)
+    
+    if request.method == 'POST':
+        billetera.cerrada = True
+        billetera.fecha_cierre = timezone.now()
+        billetera.usuario_cierre = request.user
+        billetera.save()
+        
+        # Sumar al saldo general de caja
+        saldo_general = SaldoGeneral.objects.first()
+        if not saldo_general:
+            saldo_general = SaldoGeneral.objects.create()
+        saldo_general.monto += billetera.saldo_actual
+        saldo_general.save()
+        
+        messages.success(request, f'Billetera cerrada. Saldo final: ${billetera.saldo_actual} sumado al saldo general.')
+        return redirect('caja:billetera_electronica')
+    
+    return render(request, 'caja/cerrar_billetera.html', {'billetera': billetera})
+
+@login_required
+def historial_billeteras(request):
+    """Ver historial de billeteras cerradas"""
+    if not (request.user.perfil and request.user.perfil.rol in ['admin', 'encargado']):
+        messages.error(request, 'No tienes permisos para ver el historial.')
+        return redirect('caja:billetera_electronica')
+    
+    billeteras = BilleteraElectronica.objects.filter(cerrada=True)
+    return render(request, 'caja/historial_billeteras.html', {'billeteras': billeteras})
