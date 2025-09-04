@@ -5,8 +5,11 @@ from django.db.models import Sum, Q
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal
-from .models import SaldoGeneral, CajaDiaria, Recreo, EventoEspecial, PagoProveedor
-from .forms import InicioCajaForm, InicioCajaExtraForm, RecreoForm, EventoEspecialForm, PagoProveedorForm
+from .models import (SaldoGeneral, SaldoElectronico, CajaDiaria, CajaElectronica, 
+                    Recreo, EventoEspecial, PagoProveedor, IngresoElectronico, PagoElectronico)
+from .forms import (InicioCajaForm, InicioCajaExtraForm, RecreoForm, EventoEspecialForm, 
+                   PagoProveedorForm, InicioCajaElectronicaForm, IngresoElectronicoForm, 
+                   PagoElectronicoForm, SaldoElectronicoForm)
 from django import forms
 from usuarios.decorators import solo_admin, admin_o_encargado
 from django.utils import timezone
@@ -75,6 +78,10 @@ def lista_cajas(request):
     saldo_general = SaldoGeneral.objects.first()
     if not saldo_general:
         saldo_general = SaldoGeneral.objects.create()
+        
+    saldo_electronico = SaldoElectronico.objects.first()
+    if not saldo_electronico:
+        saldo_electronico = SaldoElectronico.objects.create()
     
     # Obtenemos el filtro de fecha si existe
     fecha_filtro = request.GET.get('fecha')
@@ -84,27 +91,51 @@ def lista_cajas(request):
     
     # Obtenemos todas las cajas ordenadas por fecha (descendente)
     cajas_query = CajaDiaria.objects.all()
+    cajas_electronicas_query = CajaElectronica.objects.all()
     
     # Aplicamos filtro si existe
     if fecha_filtro:
         try:
             fecha_filtro = datetime.datetime.strptime(fecha_filtro, '%Y-%m-%d').date()
             cajas_query = cajas_query.filter(fecha=fecha_filtro)
+            cajas_electronicas_query = cajas_electronicas_query.filter(fecha=fecha_filtro)
         except (ValueError, TypeError):
             # Si hay un error en el formato de fecha, ignoramos el filtro
             pass
     
     cajas = cajas_query.order_by('-fecha', 'turno', 'nivel', 'es_extra')
+    cajas_electronicas = cajas_electronicas_query.order_by('-fecha')
     
-    # Agrupar cajas por fecha
+    # Agrupar cajas por fecha incluyendo electrónicas
     cajas_por_fecha = []
-    for fecha, grupo in groupby(cajas, key=attrgetter('fecha')):
-        cajas_grupo = list(grupo)
-        total_ingresos_dia = sum(caja.get_total_ingresos() for caja in cajas_grupo)
-        total_egresos_dia = sum(caja.get_total_egresos() for caja in cajas_grupo)
+    
+    # Combinar fechas de ambos tipos de cajas
+    todas_las_fechas = set()
+    for caja in cajas:
+        todas_las_fechas.add(caja.fecha)
+    for caja in cajas_electronicas:
+        todas_las_fechas.add(caja.fecha)
+    
+    # Ordenar fechas descendentemente
+    fechas_ordenadas = sorted(todas_las_fechas, reverse=True)
+    
+    for fecha in fechas_ordenadas:
+        cajas_fecha = [caja for caja in cajas if caja.fecha == fecha]
+        cajas_electronicas_fecha = [caja for caja in cajas_electronicas if caja.fecha == fecha]
+        
+        # Calcular totales incluyendo cajas electrónicas
+        total_ingresos_dia = sum(caja.get_total_ingresos() for caja in cajas_fecha)
+        total_egresos_dia = sum(caja.get_total_egresos() for caja in cajas_fecha)
+        
+        # Agregar ingresos y egresos de cajas electrónicas
+        for caja_elec in cajas_electronicas_fecha:
+            total_ingresos_dia += caja_elec.get_total_ingresos()
+            total_egresos_dia += caja_elec.get_total_egresos()
+        
         cajas_por_fecha.append({
             'fecha': fecha,
-            'cajas': cajas_grupo,
+            'cajas': cajas_fecha,
+            'cajas_electronicas': cajas_electronicas_fecha,
             'es_hoy': fecha == today,
             'total_ingresos': total_ingresos_dia,
             'total_egresos': total_egresos_dia
@@ -174,16 +205,24 @@ def lista_cajas(request):
         ).exists()
 
     # Preparar el contexto para verificar las restricciones
+    # Obtener información de cajas electrónicas
+    caja_electronica_abierta = CajaElectronica.objects.filter(cerrada=False).first()
+    hay_caja_electronica_abierta = caja_electronica_abierta is not None
+    
     context = {
         'cajas_por_fecha': cajas_por_fecha,
         'fechas_disponibles': fechas_disponibles,
         'fecha_filtro': fecha_filtro,
         'saldo_general': saldo_general,
+        'saldo_electronico': saldo_electronico,
         'hay_cajas_abiertas': hay_cajas_abiertas,
+        'hay_caja_electronica_abierta': hay_caja_electronica_abierta,
+        'caja_electronica_abierta': caja_electronica_abierta,
         'saldo_parcial': saldo_parcial if hay_cajas_abiertas else 0,
         'hay_caja_mismo_nivel_turno': hay_caja_abierta_mismo_nivel_turno,
         'hay_cajas_extras_disponibles': hay_cajas_extras_disponibles,
         'caja_abierta_ambos_niveles_mismo_turno': caja_abierta_ambos_niveles_mismo_turno,
+        'saldo_total': saldo_general.get_saldo_total(),
     }
 
     return render(request, 'lista_cajas.html', context)
@@ -672,4 +711,157 @@ def editar_recreo(request, recreo_id):
         'form': form,
         'recreo': recreo,
         'caja': caja
+    })
+
+# ================= VISTAS DE CAJA ELECTRÓNICA =================
+
+@solo_admin
+def iniciar_caja_electronica(request):
+    """Vista para iniciar una nueva caja electrónica (solo admin)"""
+    import datetime
+    
+    # Verificar si ya existe una caja electrónica abierta
+    caja_abierta = CajaElectronica.objects.filter(cerrada=False).first()
+    if caja_abierta:
+        messages.error(request, f'Ya existe una caja electrónica abierta del {caja_abierta.fecha}')
+        return redirect('caja:lista_cajas')
+    
+    # Verificar si ya existe una caja electrónica para hoy
+    hoy = datetime.date.today()
+    if CajaElectronica.objects.filter(fecha=hoy).exists():
+        messages.error(request, 'Ya existe una caja electrónica para el día de hoy')
+        return redirect('caja:lista_cajas')
+
+    if request.method == 'POST':
+        form = InicioCajaElectronicaForm(request.POST)
+        if form.is_valid():
+            try:
+                caja = form.save(commit=False)
+                caja.fecha = hoy
+                caja.save()
+                
+                # Actualizar saldo inicial
+                caja.actualizar_saldo_parcial()
+                
+                messages.success(request, f'Caja electrónica iniciada correctamente para el {hoy}')
+                return redirect('caja:lista_cajas')
+            except ValidationError as e:
+                messages.error(request, str(e))
+    else:
+        form = InicioCajaElectronicaForm()
+
+    return render(request, 'iniciar_caja_electronica.html', {'form': form})
+
+@login_required
+def registrar_movimientos_electronicos(request, caja_id):
+    """Vista para registrar movimientos en la caja electrónica"""
+    caja = get_object_or_404(CajaElectronica, id=caja_id)
+    
+    # Verificar permisos: solo admin y el usuario responsable
+    if not (request.user.perfil.rol == 'admin' or request.user == caja.usuario_responsable):
+        messages.error(request, 'No tienes permisos para gestionar esta caja electrónica')
+        return redirect('caja:lista_cajas')
+    
+    if caja.cerrada:
+        messages.error(request, 'Esta caja electrónica está cerrada')
+        return redirect('caja:lista_cajas')
+
+    ingreso_form = IngresoElectronicoForm()
+    pago_form = PagoElectronicoForm()
+
+    if request.method == 'POST':
+        if 'ingreso_submit' in request.POST:
+            ingreso_form = IngresoElectronicoForm(request.POST)
+            if ingreso_form.is_valid():
+                ingreso = ingreso_form.save(commit=False)
+                ingreso.caja_electronica = caja
+                ingreso.usuario_registro = request.user
+                ingreso.save()
+                caja.actualizar_saldo_parcial()
+                messages.success(request, 'Ingreso electrónico registrado correctamente')
+                return redirect('caja:registrar_movimientos_electronicos', caja_id=caja.id)
+
+        elif 'pago_submit' in request.POST:
+            pago_form = PagoElectronicoForm(request.POST)
+            if pago_form.is_valid():
+                pago = pago_form.save(commit=False)
+                pago.caja_electronica = caja
+                pago.usuario_registro = request.user
+                pago.save()
+                caja.actualizar_saldo_parcial()
+                messages.success(request, 'Pago electrónico registrado correctamente')
+                return redirect('caja:registrar_movimientos_electronicos', caja_id=caja.id)
+
+    # Obtener movimientos
+    ingresos = IngresoElectronico.objects.filter(caja_electronica=caja).order_by('-fecha_registro')
+    pagos = PagoElectronico.objects.filter(caja_electronica=caja).order_by('-fecha_registro')
+
+    return render(request, 'registrar_movimientos_electronicos.html', {
+        'caja': caja,
+        'ingreso_form': ingreso_form,
+        'pago_form': pago_form,
+        'ingresos': ingresos,
+        'pagos': pagos,
+    })
+
+@solo_admin
+def cerrar_caja_electronica(request, caja_id):
+    """Vista para cerrar la caja electrónica y actualizar saldo general"""
+    caja = get_object_or_404(CajaElectronica, id=caja_id)
+    
+    if caja.cerrada:
+        messages.error(request, 'Esta caja electrónica ya está cerrada')
+        return redirect('caja:lista_cajas')
+
+    if request.method == 'POST':
+        # Cerrar la caja
+        caja.cerrada = True
+        caja.save()
+        
+        # Actualizar el saldo electrónico general
+        saldo_electronico, created = SaldoElectronico.objects.get_or_create(defaults={'monto': 0})
+        saldo_electronico.monto += caja.saldo_parcial
+        saldo_electronico.save()
+        
+        messages.success(request, f'Caja electrónica cerrada. Saldo transferido al saldo general electrónico: ${caja.saldo_parcial}')
+        return redirect('caja:lista_cajas')
+
+    return render(request, 'confirmar_cerrar_caja_electronica.html', {'caja': caja})
+
+@solo_admin
+def gestionar_saldo_electronico(request):
+    """Vista para gestionar el saldo electrónico general"""
+    saldo_electronico, created = SaldoElectronico.objects.get_or_create(defaults={'monto': 0})
+    
+    if request.method == 'POST':
+        form = SaldoElectronicoForm(request.POST, instance=saldo_electronico)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Saldo electrónico actualizado correctamente')
+            return redirect('caja:lista_cajas')
+    else:
+        form = SaldoElectronicoForm(instance=saldo_electronico)
+
+    return render(request, 'gestionar_saldo_electronico.html', {
+        'form': form,
+        'saldo_electronico': saldo_electronico
+    })
+
+@login_required
+def ver_movimientos_caja_electronica(request, caja_id):
+    """Vista para ver los movimientos de una caja electrónica"""
+    caja = get_object_or_404(CajaElectronica, id=caja_id)
+    
+    # Verificar permisos: admin, encargado o usuario responsable
+    if not (request.user.perfil.rol in ['admin', 'encargado'] or request.user == caja.usuario_responsable):
+        messages.error(request, 'No tienes permisos para ver esta caja electrónica')
+        return redirect('caja:lista_cajas')
+    
+    ingresos = IngresoElectronico.objects.filter(caja_electronica=caja).order_by('-fecha_registro')
+    pagos = PagoElectronico.objects.filter(caja_electronica=caja).order_by('-fecha_registro')
+    
+    return render(request, 'ver_movimientos_caja_electronica.html', {
+        'caja': caja,
+        'ingresos': ingresos,
+        'pagos': pagos,
     })

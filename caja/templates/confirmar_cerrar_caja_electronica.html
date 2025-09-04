@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %} - Cerrar Caja Electrónica{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Cerrar Caja Electrónica
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        ¿Estás seguro que deseas cerrar la caja electrónica del <strong>{{ caja.fecha }}</strong>?
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6>Resumen de la Caja:</h6>
+                            <hr>
+                            <div class="row">
+                                <div class="col-6">
+                                    <p><strong>Responsable:</strong></p>
+                                    <p>{{ caja.usuario_responsable.get_full_name|default:caja.usuario_responsable.username }}</p>
+                                </div>
+                                <div class="col-6">
+                                    <p><strong>Fecha:</strong></p>
+                                    <p>{{ caja.fecha }}</p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <p><strong>Saldo Inicial:</strong></p>
+                                    <p class="text-info">${{ caja.saldo_inicial }}</p>
+                                </div>
+                                <div class="col-6">
+                                    <p><strong>Saldo Final:</strong></p>
+                                    <p class="text-primary"><strong>${{ caja.saldo_parcial }}</strong></p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <p><strong>Total Ingresos:</strong></p>
+                                    <p class="text-success">${{ caja.get_total_ingresos }}</p>
+                                </div>
+                                <div class="col-6">
+                                    <p><strong>Total Egresos:</strong></p>
+                                    <p class="text-danger">${{ caja.get_total_egresos }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Al cerrar la caja, el saldo final (<strong>${{ caja.saldo_parcial }}</strong>) se sumará al saldo electrónico general.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-lock me-1"></i>Cerrar Caja Electrónica
+                            </button>
+                            <a href="{% url 'caja:registrar_movimientos_electronicos' caja.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

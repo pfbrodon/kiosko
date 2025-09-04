@@ -16,17 +16,32 @@
         <div class="col-md-4">
             <div class="card bg-light">
                 <div class="card-body text-center">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="card-subtitle text-muted">Saldo Efectivo</h6>
+                            <h5 class="{% if saldo_general.monto >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ${{ saldo_general.monto|floatformat:2 }}
+                            </h5>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="card-subtitle text-muted">Saldo Electrónico</h6>
+                            <h5 class="{% if saldo_electronico.monto >= 0 %}text-info{% else %}text-danger{% endif %}">
+                                ${{ saldo_electronico.monto|floatformat:2 }}
+                            </h5>
+                        </div>
+                    </div>
+                    <hr class="my-2">
                     <h4 class="card-title mb-0">
-                        Saldo General: 
-                        <span class="{% if saldo_general.monto >= 0 %}text-success{% else %}text-danger{% endif %}">
-                            ${{ saldo_general.monto|floatformat:2 }}
+                        Saldo Total: 
+                        <span class="{% if saldo_total >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                            ${{ saldo_total|floatformat:2 }}
                         </span>
                     </h4>
                     {% if hay_cajas_abiertas %}
                     <div class="mt-2">
                         <h5 class="card-subtitle">
                             Saldo Parcial: 
-                            <span class="{% if saldo_parcial >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                            <span class="{% if saldo_parcial >= 0 %}text-warning{% else %}text-danger{% endif %}">
                                 ${{ saldo_parcial|floatformat:2 }}
                             </span>
                             <i class="fas fa-info-circle ms-1 text-muted" title="Total de ingresos y pagos de cajas en proceso"></i>
@@ -84,6 +99,33 @@
                         <a href="{% url 'caja:iniciar_caja_extra' %}" class="btn btn-warning">
                             <i class="fas fa-plus-circle me-2"></i>Iniciar Caja Extra
                         </a>
+                    {% endif %}
+                    
+                    <!-- Botones de Caja Electrónica (solo para admin) -->
+                    {% if user.perfil.rol == 'admin' %}
+                        <div class="btn-group ms-2">
+                            {% if hay_caja_electronica_abierta %}
+                                <a href="{% url 'caja:registrar_movimientos_electronicos' caja_electronica_abierta.id %}" 
+                                   class="btn btn-info">
+                                    <i class="fas fa-credit-card me-1"></i>Gestionar Caja Electrónica
+                                </a>
+                            {% else %}
+                                <a href="{% url 'caja:iniciar_caja_electronica' %}" class="btn btn-outline-info">
+                                    <i class="fas fa-credit-card me-1"></i>Iniciar Caja Electrónica
+                                </a>
+                            {% endif %}
+                            <button type="button" class="btn btn-outline-info dropdown-toggle dropdown-toggle-split" 
+                                    data-bs-toggle="dropdown">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'caja:gestionar_saldo_electronico' %}">
+                                        <i class="fas fa-cog me-1"></i>Gestionar Saldo Electrónico
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -184,6 +226,43 @@
                                                             onclick="confirmarEliminarCaja({{ caja.id }}, '{{ caja.fecha|date:'d/m/Y' }} - {{ caja.get_turno_display }} - {{ caja.get_nivel_display }}')">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    
+                                    <!-- Cajas Electrónicas para esta fecha -->
+                                    {% for caja_elec in grupo.cajas_electronicas %}
+                                    <tr class="table-info">
+                                        <td>
+                                            <i class="fas fa-credit-card me-1"></i>Electrónica
+                                        </td>
+                                        <td>-</td>
+                                        <td>${{ caja_elec.saldo_inicial|floatformat:2 }}</td>
+                                        <td class="text-success">${{ caja_elec.get_total_ingresos|floatformat:2 }}</td>
+                                        <td class="text-danger">${{ caja_elec.get_total_egresos|floatformat:2 }}</td>
+                                        <td>
+                                            {% if caja_elec.cerrada %}
+                                                <span class="badge bg-secondary">Cerrada</span>
+                                                <small class="text-muted d-block">Saldo final: ${{ caja_elec.saldo_parcial|floatformat:2 }}</small>
+                                            {% else %}
+                                                <span class="badge bg-success">Abierta</span>
+                                                <small class="text-primary d-block">Saldo actual: ${{ caja_elec.saldo_parcial|floatformat:2 }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if not caja_elec.cerrada and user.perfil.rol == 'admin' or user == caja_elec.usuario_responsable %}
+                                                    <a href="{% url 'caja:registrar_movimientos_electronicos' caja_elec.id %}" 
+                                                       class="btn btn-info btn-sm" title="Gestionar">
+                                                        <i class="fas fa-credit-card"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{% url 'caja:ver_movimientos_caja_electronica' caja_elec.id %}" 
+                                                       class="btn btn-outline-info btn-sm" title="Ver movimientos">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
                                                 {% endif %}
                                             </div>
                                         </td>

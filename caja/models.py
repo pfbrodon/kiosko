@@ -2,13 +2,42 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from decimal import Decimal
+from django.contrib.auth.models import User
 
 class SaldoGeneral(models.Model):
     monto = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     ultima_actualizacion = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Saldo General: ${self.monto}"
+        return f"Saldo General Efectivo: ${self.monto}"
+    
+    def get_saldo_total(self):
+        """Retorna el saldo total: efectivo + electrónico"""
+        try:
+            saldo_electronico = SaldoElectronico.objects.first()
+            monto_electronico = saldo_electronico.monto if saldo_electronico else Decimal('0')
+            return self.monto + monto_electronico
+        except:
+            return self.monto
+    
+    def get_saldo_electronico(self):
+        """Retorna el saldo electrónico actual"""
+        try:
+            saldo_electronico = SaldoElectronico.objects.first()
+            return saldo_electronico.monto if saldo_electronico else Decimal('0')
+        except:
+            return Decimal('0')
+
+class SaldoElectronico(models.Model):
+    monto = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    ultima_actualizacion = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Saldo Electrónico: ${self.monto}"
+    
+    class Meta:
+        verbose_name = "Saldo Electrónico"
+        verbose_name_plural = "Saldos Electrónicos"
 
 class CajaDiaria(models.Model):
     TURNOS = [
@@ -152,6 +181,85 @@ class CajaDiaria(models.Model):
             total=Sum('monto')
         )['total'] or Decimal('0')
 
+class CajaElectronica(models.Model):
+    fecha = models.DateField()
+    saldo_inicial = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    saldo_parcial = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cerrada = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    usuario_responsable = models.ForeignKey(User, on_delete=models.PROTECT, 
+                                          help_text="Usuario responsable de esta caja electrónica")
+
+    class Meta:
+        ordering = ['-fecha']
+        verbose_name = "Caja Electrónica"
+        verbose_name_plural = "Cajas Electrónicas"
+        # Solo puede haber una caja electrónica por fecha
+        unique_together = ['fecha']
+        # Solo puede haber una caja electrónica abierta
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cerrada'],
+                condition=models.Q(cerrada=False),
+                name='unique_open_electronica_constraint'
+            )
+        ]
+
+    def clean(self):
+        import datetime
+        
+        # Si estamos creando una nueva caja electrónica
+        if not self.id:
+            # Verificar que no exista otra caja electrónica para la misma fecha
+            if CajaElectronica.objects.filter(fecha=self.fecha).exists():
+                raise ValidationError('Ya existe una caja electrónica para esta fecha')
+            
+            # Verificar que no exista otra caja electrónica abierta
+            if CajaElectronica.objects.filter(cerrada=False).exists():
+                raise ValidationError('Ya existe una caja electrónica abierta')
+        else:
+            # Si estamos editando una caja existente
+            if not self.cerrada:
+                caja_abierta = CajaElectronica.objects.filter(
+                    cerrada=False
+                ).exclude(pk=self.pk).exists()
+                
+                if caja_abierta:
+                    raise ValidationError('Ya existe una caja electrónica abierta')
+
+    def __str__(self):
+        return f"Caja Electrónica - {self.fecha} - {self.usuario_responsable.username}"
+
+    def calcular_saldo_parcial(self):
+        """Calcula el saldo parcial basado en ingresos y egresos"""
+        # Suma todos los ingresos por transferencias
+        ingresos_transferencias = self.ingresoelectronico_set.aggregate(
+            total=Sum('monto'))['total'] or Decimal('0')
+        
+        # Suma todos los egresos por pagos
+        egresos_pagos = self.pagoelectronico_set.aggregate(
+            total=Sum('monto'))['total'] or Decimal('0')
+        
+        # Calcula el saldo parcial
+        return self.saldo_inicial + ingresos_transferencias - egresos_pagos
+
+    def actualizar_saldo_parcial(self):
+        """Actualiza el saldo parcial y guarda el modelo"""
+        self.saldo_parcial = self.calcular_saldo_parcial()
+        self.save()
+
+    def get_total_ingresos(self):
+        """Retorna el total de ingresos por transferencias"""
+        return self.ingresoelectronico_set.aggregate(
+            total=Sum('monto')
+        )['total'] or Decimal('0')
+        
+    def get_total_egresos(self):
+        """Retorna el total de egresos por pagos electrónicos"""
+        return self.pagoelectronico_set.aggregate(
+            total=Sum('monto')
+        )['total'] or Decimal('0')
+
 class Recreo(models.Model):
     caja = models.ForeignKey(CajaDiaria, on_delete=models.CASCADE)
     numero = models.IntegerField()
@@ -178,3 +286,39 @@ class PagoProveedor(models.Model):
     comprobante = models.CharField(max_length=50)
     observacion = models.TextField(blank=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
+
+class IngresoElectronico(models.Model):
+    """Ingresos por transferencias en la caja electrónica"""
+    caja_electronica = models.ForeignKey(CajaElectronica, on_delete=models.CASCADE)
+    descripcion = models.CharField(max_length=255, help_text="Descripción de la transferencia")
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT,
+                                       help_text="Usuario que registró el ingreso")
+
+    class Meta:
+        ordering = ['-fecha_registro']
+        verbose_name = "Ingreso Electrónico"
+        verbose_name_plural = "Ingresos Electrónicos"
+
+    def __str__(self):
+        return f"{self.descripcion} - ${self.monto}"
+
+class PagoElectronico(models.Model):
+    """Egresos por pagos a proveedores desde la caja electrónica"""
+    caja_electronica = models.ForeignKey(CajaElectronica, on_delete=models.CASCADE)
+    proveedor = models.ForeignKey('precios.Proveedor', on_delete=models.PROTECT)
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    comprobante = models.CharField(max_length=50, help_text="Número de comprobante o referencia")
+    observacion = models.TextField(blank=True)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT,
+                                       help_text="Usuario que registró el pago")
+
+    class Meta:
+        ordering = ['-fecha_registro']
+        verbose_name = "Pago Electrónico"
+        verbose_name_plural = "Pagos Electrónicos"
+
+    def __str__(self):
+        return f"Pago a {self.proveedor.nombre} - ${self.monto}"

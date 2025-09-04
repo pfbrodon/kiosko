@@ -16,4 +16,11 @@ urlpatterns = [
     path('limpiar/', views.limpiar_cajas, name='limpiar_cajas'),
     path('caja-extra/<int:caja_id>/eliminar/', views.eliminar_caja_extra, name='eliminar_caja_extra'),
     path('egresos-proveedor/', views.egresos_por_proveedor, name='egresos_por_proveedor'),
+    
+    # URLs para Caja Electrónica
+    path('electronica/iniciar/', views.iniciar_caja_electronica, name='iniciar_caja_electronica'),
+    path('electronica/<int:caja_id>/movimientos/', views.registrar_movimientos_electronicos, name='registrar_movimientos_electronicos'),
+    path('electronica/<int:caja_id>/cerrar/', views.cerrar_caja_electronica, name='cerrar_caja_electronica'),
+    path('electronica/<int:caja_id>/ver/', views.ver_movimientos_caja_electronica, name='ver_movimientos_caja_electronica'),
+    path('gestionar-saldo-electronico/', views.gestionar_saldo_electronico, name='gestionar_saldo_electronico'),
 ]
