@@ -153,8 +153,11 @@ class CajaDiaria(models.Model):
         egresos_pagos = self.pagoproveedor_set.aggregate(
             total=Sum('monto'))['total'] or Decimal('0')
         
+        # Obtener el saldo inicial a considerar (0 para primarias, valor real para secundarias)
+        saldo_inicial_a_usar = self.get_saldo_inicial_display()
+        
         # Calcula el saldo parcial
-        return self.saldo_inicial + ingresos_recreos + ingresos_eventos - egresos_pagos
+        return saldo_inicial_a_usar + ingresos_recreos + ingresos_eventos - egresos_pagos
 
     def actualizar_saldo_parcial(self):
         self.saldo_parcial = self.calcular_saldo_parcial()

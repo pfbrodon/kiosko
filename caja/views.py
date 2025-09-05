@@ -158,17 +158,19 @@ def lista_cajas(request):
     
     # Para cada caja abierta, calculamos sus componentes
     for caja in cajas_abiertas:
-        # Sumamos el saldo inicial (importante para secundarias)
+        # Actualizamos su saldo parcial para asegurarnos que esté actualizado
+        caja.actualizar_saldo_parcial()
+        
+        # Sumamos el saldo inicial solo de cajas secundarias (lógica del negocio)
+        # Las cajas primarias siempre empiezan con 0
         if caja.nivel == 'S':
             saldo_inicial_total += caja.saldo_inicial
         
         # Sumamos todos los ingresos (recreos + eventos)
         ingresos_total += caja.get_total_ingresos()
         
-        # Sumamos todos los pagos
-        total_pagos = caja.pagoproveedor_set.aggregate(
-            total=Sum('monto'))['total'] or Decimal('0')
-        egresos_total += total_pagos
+        # Sumamos todos los egresos
+        egresos_total += caja.get_total_egresos()
     
     # Calculamos el saldo parcial total como en la vista de registrar_movimientos
     saldo_parcial = saldo_inicial_total + ingresos_total - egresos_total
@@ -497,7 +499,8 @@ def registrar_movimientos(request, caja_id):
         # Actualizamos su saldo parcial para asegurarnos que esté actualizado
         caja_abierta.actualizar_saldo_parcial()
         
-        # Sumamos el saldo inicial (importante para secundarias)
+        # Sumamos el saldo inicial solo de cajas secundarias (lógica del negocio)
+        # Las cajas primarias siempre empiezan con 0
         if caja_abierta.nivel == 'S':
             saldo_inicial_total += caja_abierta.saldo_inicial
         
@@ -917,9 +920,13 @@ def reabrir_caja(request, caja_id):
             # Actualizar el saldo general restando la diferencia
             saldo_general = SaldoGeneral.objects.first()
             if saldo_general:
+                # Usar la diferencia que ya está almacenada en la BD
+                # para evitar problemas con cambios en la lógica de cálculo
                 saldo_diferencia = caja.saldo_parcial - caja.saldo_inicial
                 saldo_general.monto -= saldo_diferencia
                 saldo_general.save()
+                
+                print(f"DEBUG: Reapertura - Diferencia restada: {saldo_diferencia}")
             
             # Reabrir la caja
             caja.reabrir_caja(request.user)
