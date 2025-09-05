@@ -223,6 +223,7 @@ def lista_cajas(request):
         'hay_cajas_extras_disponibles': hay_cajas_extras_disponibles,
         'caja_abierta_ambos_niveles_mismo_turno': caja_abierta_ambos_niveles_mismo_turno,
         'saldo_total': saldo_general.get_saldo_total(),
+        'today': today,  # Agregar la fecha de hoy para el template
     }
 
     return render(request, 'lista_cajas.html', context)
@@ -889,6 +890,52 @@ def confirmar_cerrar_caja(request, caja_id):
     diferencia_saldo = caja.saldo_parcial - caja.saldo_inicial
     
     return render(request, 'confirmar_cerrar_caja.html', {
+        'caja': caja,
+        'diferencia_saldo': diferencia_saldo
+    })
+
+@admin_o_encargado
+def reabrir_caja(request, caja_id):
+    """Vista para reabrir una caja cerrada del día actual"""
+    from django.core.exceptions import ValidationError
+    from datetime import date
+    
+    caja = get_object_or_404(CajaDiaria, id=caja_id)
+    
+    # Verificar que la caja esté cerrada
+    if not caja.cerrada:
+        messages.error(request, 'Esta caja ya está abierta')
+        return redirect('caja:lista_cajas')
+    
+    # Verificar que sea del día actual
+    if caja.fecha != date.today():
+        messages.error(request, 'Solo se pueden reabrir cajas del día actual')
+        return redirect('caja:lista_cajas')
+    
+    if request.method == 'POST' and 'confirmar_reapertura' in request.POST:
+        try:
+            # Actualizar el saldo general restando la diferencia
+            saldo_general = SaldoGeneral.objects.first()
+            if saldo_general:
+                saldo_diferencia = caja.saldo_parcial - caja.saldo_inicial
+                saldo_general.monto -= saldo_diferencia
+                saldo_general.save()
+            
+            # Reabrir la caja
+            caja.reabrir_caja(request.user)
+            
+            mensaje = f'Caja {"extra" if caja.es_extra else ""} reabierta correctamente'
+            messages.success(request, mensaje)
+            return redirect('caja:registrar_movimientos', caja_id=caja.id)
+            
+        except ValidationError as e:
+            messages.error(request, str(e))
+            return redirect('caja:lista_cajas')
+    
+    # Calcular la diferencia de saldo que se restará del saldo general
+    diferencia_saldo = caja.saldo_parcial - caja.saldo_inicial
+    
+    return render(request, 'confirmar_reabrir_caja.html', {
         'caja': caja,
         'diferencia_saldo': diferencia_saldo
     })

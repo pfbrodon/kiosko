@@ -57,6 +57,13 @@ class CajaDiaria(models.Model):
     cerrada = models.BooleanField(default=False)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     es_extra = models.BooleanField(default=False)
+    
+    # Campos para rastrear reaperturas
+    fue_reabierta = models.BooleanField(default=False)
+    fecha_reapertura = models.DateTimeField(null=True, blank=True)
+    usuario_reapertura = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT,
+                                         related_name='cajas_reabiertas',
+                                         help_text="Usuario que reabrió esta caja")
 
     class Meta:
         unique_together = ['fecha', 'turno', 'nivel', 'es_extra']
@@ -151,6 +158,32 @@ class CajaDiaria(models.Model):
 
     def actualizar_saldo_parcial(self):
         self.saldo_parcial = self.calcular_saldo_parcial()
+        self.save()
+
+    def reabrir_caja(self, usuario):
+        """Reabre una caja cerrada, solo para el mismo día"""
+        from datetime import date, datetime
+        
+        if not self.cerrada:
+            raise ValidationError("Esta caja ya está abierta")
+        
+        # Verificar que sea del mismo día
+        if self.fecha != date.today():
+            raise ValidationError("Solo se pueden reabrir cajas del día actual")
+        
+        # Verificar que no haya otra caja abierta del mismo nivel y turno
+        if CajaDiaria.objects.filter(
+            nivel=self.nivel,
+            turno=self.turno,
+            cerrada=False
+        ).exists():
+            raise ValidationError(f"Ya existe una caja abierta para {self.get_nivel_display()} - {self.get_turno_display()}")
+        
+        # Reabrir la caja
+        self.cerrada = False
+        self.fue_reabierta = True
+        self.fecha_reapertura = datetime.now()
+        self.usuario_reapertura = usuario
         self.save()
 
     def get_saldo_inicial_display(self):
