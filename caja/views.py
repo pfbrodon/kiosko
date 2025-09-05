@@ -477,20 +477,8 @@ def registrar_movimientos(request, caja_id):
                 return redirect('caja:registrar_movimientos', caja_id=caja.id)
         
         elif 'cerrar_caja' in request.POST:
-            # Antes de cerrar la caja, calculamos el saldo parcial final
-            caja.actualizar_saldo_parcial()
-            
-            # Al cerrar la caja, actualizamos el saldo general
-            saldo_diferencia = caja.saldo_parcial - caja.saldo_inicial
-            saldo_general.monto += saldo_diferencia
-            saldo_general.save()
-            
-            caja.cerrada = True
-            caja.save()
-            
-            mensaje = 'Caja extra cerrada correctamente' if caja.es_extra else 'Caja cerrada correctamente'
-            messages.success(request, mensaje)
-            return redirect('caja:lista_cajas')
+            # Redirigir a la página de confirmación
+            return redirect('caja:confirmar_cerrar_caja', caja_id=caja.id)
         
         return redirect('caja:registrar_movimientos', caja_id=caja.id)
 
@@ -864,4 +852,43 @@ def ver_movimientos_caja_electronica(request, caja_id):
         'caja': caja,
         'ingresos': ingresos,
         'pagos': pagos,
+    })
+
+@login_required
+def confirmar_cerrar_caja(request, caja_id):
+    """Vista para confirmar el cierre de una caja diaria"""
+    caja = get_object_or_404(CajaDiaria, id=caja_id)
+    saldo_general = SaldoGeneral.objects.first()
+    if not saldo_general:
+        saldo_general = SaldoGeneral.objects.create()
+    
+    if caja.cerrada:
+        messages.error(request, 'Esta caja ya está cerrada')
+        return redirect('caja:lista_cajas')
+
+    if request.method == 'POST' and 'confirmar_cierre' in request.POST:
+        # Antes de cerrar la caja, calculamos el saldo parcial final
+        caja.actualizar_saldo_parcial()
+        
+        # Al cerrar la caja, actualizamos el saldo general
+        saldo_diferencia = caja.saldo_parcial - caja.saldo_inicial
+        saldo_general.monto += saldo_diferencia
+        saldo_general.save()
+        
+        caja.cerrada = True
+        caja.save()
+        
+        mensaje = 'Caja extra cerrada correctamente' if caja.es_extra else 'Caja cerrada correctamente'
+        messages.success(request, mensaje)
+        return redirect('caja:lista_cajas')
+
+    # Actualizar saldo parcial antes de mostrar la confirmación
+    caja.actualizar_saldo_parcial()
+    
+    # Calcular la diferencia de saldo
+    diferencia_saldo = caja.saldo_parcial - caja.saldo_inicial
+    
+    return render(request, 'confirmar_cerrar_caja.html', {
+        'caja': caja,
+        'diferencia_saldo': diferencia_saldo
     })
