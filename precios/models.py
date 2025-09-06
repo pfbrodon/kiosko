@@ -174,18 +174,20 @@ class Producto(models.Model):
         
         # Calcula precio unitario de compra
         if self.tipo_compra in ['C', 'B']:
-            precio_base = self.precio_compra_paquete / self.unidades_por_paquete
+            precio_base = Decimal(str(self.precio_compra_paquete)) / Decimal(str(self.unidades_por_paquete))
         else:
-            precio_base = self.precio_compra_paquete
+            precio_base = Decimal(str(self.precio_compra_paquete))
 
         # Aplica descuento si existe
         if self.descuento_compra:
-            self.precio_compra_unitario = precio_base * (1 - (self.descuento_compra / Decimal(100)))
+            descuento_decimal = Decimal(str(self.descuento_compra))
+            self.precio_compra_unitario = precio_base * (Decimal('1') - (descuento_decimal / Decimal('100')))
         else:
             self.precio_compra_unitario = precio_base
 
         # Calcula precio de venta sugerido
-        self.precio_venta_sugerido = self.precio_compra_unitario * (1 + (self.margen_ganancia / Decimal(100)))
+        margen_decimal = Decimal(str(self.margen_ganancia))
+        self.precio_venta_sugerido = self.precio_compra_unitario * (Decimal('1') + (margen_decimal / Decimal('100')))
         
         # Actualiza el estado de la alerta de stock
         self.alerta_stock = self.cantidad_stock <= self.stock_minimo
@@ -212,10 +214,42 @@ class Producto(models.Model):
     def es_producto_nuevo(self, horas=72):
         """
         Verifica si el producto fue creado en las últimas X horas.
-        Por defecto verifica las últimas 72 horas.
+        Utiliza el registro de eventos para mayor precisión.
         """
-        fecha_limite = timezone.now() - timedelta(hours=horas)
-        return self.fecha_creacion >= fecha_limite
+        # Buscar el evento de creación más antiguo
+        evento_creacion = self.eventos.filter(tipo_evento='CREACION').order_by('fecha_evento').first()
+        
+        if evento_creacion:
+            # Usar la fecha del evento de creación
+            fecha_limite = timezone.now() - timedelta(hours=horas)
+            return evento_creacion.fecha_evento >= fecha_limite
+        else:
+            # Fallback: usar fecha_creacion del modelo si no hay evento
+            fecha_limite = timezone.now() - timedelta(hours=horas)
+            return self.fecha_creacion >= fecha_limite
+    
+    def fecha_creacion_real(self):
+        """
+        Retorna la fecha de creación real del producto basada en eventos.
+        """
+        evento_creacion = self.eventos.filter(tipo_evento='CREACION').order_by('fecha_evento').first()
+        if evento_creacion:
+            return evento_creacion.fecha_evento
+        else:
+            return self.fecha_creacion
+    
+    def registrar_evento(self, tipo_evento, descripcion="", valor_anterior=None, valor_nuevo=None, usuario=""):
+        """
+        Método helper para registrar eventos del producto.
+        """
+        return EventoProducto.objects.create(
+            producto=self,
+            tipo_evento=tipo_evento,
+            descripcion=descripcion,
+            valor_anterior=valor_anterior,
+            valor_nuevo=valor_nuevo,
+            usuario=usuario
+        )
 
     @property
     def estado_stock(self):
@@ -289,3 +323,64 @@ class HistorialPrecio(models.Model):
     
     def __str__(self):
         return f"{self.producto.nombre} - ${self.precio_anterior} → ${self.precio_nuevo}"
+
+
+class EventoProducto(models.Model):
+    """
+    Modelo para registrar eventos importantes en la vida de un producto
+    """
+    TIPO_EVENTO_CHOICES = [
+        ('CREACION', 'Creación del producto'),
+        ('MODIFICACION_PRECIO', 'Modificación de precio'),
+        ('ACTIVACION', 'Activación del producto'),
+        ('DESACTIVACION', 'Desactivación del producto'),
+        ('ACTUALIZACION_STOCK', 'Actualización de stock'),
+        ('CAMBIO_INFO', 'Cambio de información general'),
+    ]
+    
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.CASCADE,
+        related_name='eventos'
+    )
+    tipo_evento = models.CharField(
+        max_length=20,
+        choices=TIPO_EVENTO_CHOICES,
+        help_text="Tipo de evento registrado"
+    )
+    fecha_evento = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha y hora del evento"
+    )
+    descripcion = models.TextField(
+        blank=True,
+        help_text="Descripción detallada del evento"
+    )
+    valor_anterior = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Valor anterior (en formato JSON si es complejo)"
+    )
+    valor_nuevo = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Nuevo valor (en formato JSON si es complejo)"
+    )
+    usuario = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Usuario que realizó el cambio"
+    )
+    
+    class Meta:
+        ordering = ['-fecha_evento']
+        verbose_name = "Evento de Producto"
+        verbose_name_plural = "Eventos de Productos"
+        indexes = [
+            models.Index(fields=['producto', 'tipo_evento']),
+            models.Index(fields=['fecha_evento']),
+            models.Index(fields=['tipo_evento']),
+        ]
+    
+    def __str__(self):
+        return f"{self.producto.nombre} - {self.get_tipo_evento_display()} ({self.fecha_evento.strftime('%d/%m/%Y %H:%M')})"

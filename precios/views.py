@@ -6,11 +6,17 @@ from .models import Producto, Categoria, Proveedor, Subcategoria, Marca, Movimie
 from .forms import ProductoForm, ProductoSearchForm, SubcategoriaForm, CategoriaForm, ProveedorForm, MarcaForm, MovimientoStockForm
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import mm
-from reportlab.lib import colors
 from io import BytesIO
+
+# Importaciones de reportlab condicionales
+try:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
 
 # Create your views here.
 
