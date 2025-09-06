@@ -110,7 +110,15 @@ class ProductoSearchForm(forms.Form):
         ('', 'Todos'),
         ('1', 'Activos'),
         ('0', 'Inactivos'),
-        ('B', 'Stock Bajo')
+        ('B', 'Stock Bajo'),
+        ('N', 'Productos Nuevos')
+    ]
+    
+    PRECIO_MODIFICADO_CHOICES = [
+        ('', 'Sin filtro'),
+        ('24', 'Últimas 24 horas'),
+        ('48', 'Últimas 48 horas'),
+        ('72', 'Últimas 72 horas')
     ]
     
     categoria = forms.ModelChoiceField(
@@ -131,6 +139,11 @@ class ProductoSearchForm(forms.Form):
     estado = forms.ChoiceField(
         choices=ESTADO_CHOICES,
         required=False
+    )
+    precio_modificado = forms.ChoiceField(
+        choices=PRECIO_MODIFICADO_CHOICES,
+        required=False,
+        label="Precio modificado"
     )
     busqueda = forms.CharField(
         required=False,

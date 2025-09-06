@@ -1,5 +1,7 @@
 from django.db import models
 from decimal import Decimal
+from django.utils import timezone
+from datetime import timedelta
 
 
 class Categoria(models.Model):
@@ -145,6 +147,7 @@ class Producto(models.Model):
     )
 
     # Trazabilidad
+    fecha_creacion = models.DateTimeField(auto_now_add=True, help_text="Fecha de creación del producto")
     fecha_ultima_compra = models.DateTimeField(auto_now=True)
     activo = models.BooleanField(default=True)
 
@@ -157,8 +160,18 @@ class Producto(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Calcula los precios antes de guardar y verifica el estado del stock.
+        Calcula los precios antes de guardar, verifica el estado del stock,
+        y registra cambios en el precio de venta final.
         """
+        # Obtener el precio anterior si el producto ya existe
+        precio_anterior = None
+        if self.pk:
+            try:
+                producto_anterior = Producto.objects.get(pk=self.pk)
+                precio_anterior = producto_anterior.precio_venta_final
+            except Producto.DoesNotExist:
+                pass
+        
         # Calcula precio unitario de compra
         if self.tipo_compra in ['C', 'B']:
             precio_base = self.precio_compra_paquete / self.unidades_por_paquete
@@ -178,6 +191,31 @@ class Producto(models.Model):
         self.alerta_stock = self.cantidad_stock <= self.stock_minimo
         
         super().save(*args, **kwargs)
+        
+        # Registrar cambio de precio si hubo modificación
+        if precio_anterior is not None and precio_anterior != self.precio_venta_final:
+            HistorialPrecio.objects.create(
+                producto=self,
+                precio_anterior=precio_anterior,
+                precio_nuevo=self.precio_venta_final,
+                motivo="Modificación manual del precio"
+            )
+
+    def tiene_cambio_precio_reciente(self, horas=73):
+        """
+        Verifica si el producto tuvo cambios de precio en las últimas X horas.
+        Por defecto verifica las últimas 73 horas.
+        """
+        fecha_limite = timezone.now() - timedelta(hours=horas)
+        return self.historial_precios.filter(fecha_cambio__gte=fecha_limite).exists()
+    
+    def es_producto_nuevo(self, horas=72):
+        """
+        Verifica si el producto fue creado en las últimas X horas.
+        Por defecto verifica las últimas 72 horas.
+        """
+        fecha_limite = timezone.now() - timedelta(hours=horas)
+        return self.fecha_creacion >= fecha_limite
 
     @property
     def estado_stock(self):
@@ -216,3 +254,38 @@ class MovimientoStock(models.Model):
 
     class Meta:
         ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.producto.nombre} - {self.get_tipo_display()} - {self.cantidad} unidades"
+
+
+class HistorialPrecio(models.Model):
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.CASCADE,
+        related_name='historial_precios'
+    )
+    precio_anterior = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Precio anterior al cambio"
+    )
+    precio_nuevo = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Nuevo precio después del cambio"
+    )
+    fecha_cambio = models.DateTimeField(auto_now_add=True)
+    motivo = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Razón del cambio de precio"
+    )
+    
+    class Meta:
+        ordering = ['-fecha_cambio']
+        verbose_name = "Historial de Precio"
+        verbose_name_plural = "Historial de Precios"
+    
+    def __str__(self):
+        return f"{self.producto.nombre} - ${self.precio_anterior} → ${self.precio_nuevo}"

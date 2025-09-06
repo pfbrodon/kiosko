@@ -23,6 +23,9 @@ def home(request):
 
 @login_required
 def lista_productos(request):
+    from django.utils import timezone
+    from datetime import timedelta
+    
     productos = Producto.objects.all()
     form = ProductoSearchForm(request.GET)
     
@@ -40,6 +43,20 @@ def lista_productos(request):
             productos = productos.filter(nombre__icontains=form.cleaned_data['busqueda'])
         if form.cleaned_data.get('estado') == 'B':
             productos = productos.filter(alerta_stock=True)
+        if form.cleaned_data.get('estado') == 'N':
+            # Filtrar productos nuevos (últimas 72 horas)
+            fecha_limite = timezone.now() - timedelta(hours=72)
+            productos = productos.filter(fecha_creacion__gte=fecha_limite)
+        
+        # Filtro por cambios de precio recientes
+        if form.cleaned_data.get('precio_modificado'):
+            horas = int(form.cleaned_data['precio_modificado'])
+            fecha_limite = timezone.now() - timedelta(hours=horas)
+            # Filtrar productos que tienen cambios en el período especificado
+            productos_con_cambios = productos.filter(
+                historial_precios__fecha_cambio__gte=fecha_limite
+            ).distinct()
+            productos = productos_con_cambios
     
     return render(request, 'lista_productos.html', {
         'productos': productos,
