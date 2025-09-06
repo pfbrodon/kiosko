@@ -157,10 +157,21 @@
                                     <span class="badge bg-primary ms-2">HOY</span>
                                 {% endif %}
                             </span>
-                            <span>
-                                <span class="text-success small fw-bold me-3">Total ingresos: ${{ grupo.total_ingresos|floatformat:2 }}</span>
-                                <span class="text-danger small fw-bold">Total egresos: ${{ grupo.total_egresos|floatformat:2 }}</span>
-                            </span>
+                            <div class="d-flex flex-column align-items-end">
+                                <div class="mb-1">
+                                    <span class="text-success small fw-bold me-3">Ingresos: ${{ grupo.total_ingresos|floatformat:2 }}</span>
+                                    <span class="text-danger small fw-bold me-3">Egresos: ${{ grupo.total_egresos|floatformat:2 }}</span>
+                                </div>
+                                <div>
+                                    <span class="small text-muted me-2" title="Saldo inicial únicamente de la caja secundaria turno mañana">
+                                        <i class="fas fa-coins me-1"></i>Saldo inicial del día: ${{ grupo.saldo_inicial_dia|floatformat:2 }}
+                                    </span>
+                                    <span class="fw-bold {% if grupo.saldo_total_dia >= 0 %}text-primary{% else %}text-danger{% endif %}" 
+                                          title="Saldo inicial + todos los ingresos - todos los egresos del día (incluye cajas electrónicas)">
+                                        <i class="fas fa-calculator me-1"></i>Saldo Total del Día: ${{ grupo.saldo_total_dia|floatformat:2 }}
+                                    </span>
+                                </div>
+                            </div>
                         </h5>
                         
                         <!-- Tabla de cajas para esta fecha -->

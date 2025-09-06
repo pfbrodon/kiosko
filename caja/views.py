@@ -86,8 +86,10 @@ def lista_cajas(request):
     # Obtenemos el filtro de fecha si existe
     fecha_filtro = request.GET.get('fecha')
     
-    # Obtenemos fechas únicas para el dropdown del filtro
-    fechas_disponibles = CajaDiaria.objects.values_list('fecha', flat=True).distinct().order_by('-fecha')
+    # Obtenemos fechas únicas para el dropdown del filtro (cajas normales y electrónicas)
+    fechas_cajas_normales = CajaDiaria.objects.values_list('fecha', flat=True)
+    fechas_cajas_electronicas = CajaElectronica.objects.values_list('fecha', flat=True)
+    fechas_disponibles = sorted(set(list(fechas_cajas_normales) + list(fechas_cajas_electronicas)), reverse=True)
     
     # Obtenemos todas las cajas ordenadas por fecha (descendente)
     cajas_query = CajaDiaria.objects.all()
@@ -132,13 +134,28 @@ def lista_cajas(request):
             total_ingresos_dia += caja_elec.get_total_ingresos()
             total_egresos_dia += caja_elec.get_total_egresos()
         
+        # El saldo inicial del día es único: SOLO de la caja secundaria turno mañana
+        saldo_inicial_dia = Decimal('0')
+        
+        # Buscar la caja secundaria turno mañana (que tiene el saldo inicial del día)
+        caja_secundaria_manana = next((caja for caja in cajas_fecha 
+                                     if caja.nivel == 'S' and caja.turno == 'M' and not caja.es_extra), None)
+        if caja_secundaria_manana:
+            saldo_inicial_dia = caja_secundaria_manana.saldo_inicial
+        
+        # Calcular saldo total del día: saldo_inicial + ingresos - egresos
+        # Nota: Los ingresos ya incluyen los de cajas electrónicas
+        saldo_total_dia = saldo_inicial_dia + total_ingresos_dia - total_egresos_dia
+        
         cajas_por_fecha.append({
             'fecha': fecha,
             'cajas': cajas_fecha,
             'cajas_electronicas': cajas_electronicas_fecha,
             'es_hoy': fecha == today,
             'total_ingresos': total_ingresos_dia,
-            'total_egresos': total_egresos_dia
+            'total_egresos': total_egresos_dia,
+            'saldo_inicial_dia': saldo_inicial_dia,
+            'saldo_total_dia': saldo_total_dia
         })
     
     # Verificar si hay cajas abiertas (en proceso)
