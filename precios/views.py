@@ -1,12 +1,28 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.core.cache import cache
+from django.utils import timezone
+from django.conf import settings
 from usuarios.decorators import admin_o_encargado, solo_admin
 from .models import Producto, Categoria, Proveedor, Subcategoria, Marca, MovimientoStock
 from .forms import ProductoForm, ProductoSearchForm, SubcategoriaForm, CategoriaForm, ProveedorForm, MarcaForm, MovimientoStockForm
-from django.http import HttpResponse
+from .metrics import MetricasKiosko
+from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from io import BytesIO
+
+# Función auxiliar para limpiar cache relacionado
+def limpiar_cache_productos():
+    """Limpia el cache relacionado con productos y métricas"""
+    cache.delete_many([
+        'dashboard_metricas_*',  # Esto no funciona con wildcards, así que vamos a mejorar
+    ])
+    # Alternativa: limpiar todo el cache
+    cache.clear()
+    print("🧹 Cache de productos y métricas limpiado")
 
 # Importaciones de reportlab condicionales
 try:
@@ -24,6 +40,31 @@ except ImportError:
 def home(request):
     return render(request, 'home.html')
 
+@login_required 
+def dashboard(request):
+    """Vista del dashboard con métricas del negocio"""
+    
+    # Clave de cache única por usuario
+    cache_key = f'dashboard_metricas_{request.user.id}'
+    
+    # Intentar obtener datos del cache
+    metricas = cache.get(cache_key)
+    
+    if metricas is None:
+        # Si no está en cache, calcular métricas
+        print("🔄 Calculando métricas del dashboard...")
+        metricas = MetricasKiosko.dashboard_completo()
+        
+        # Guardar en cache por 5 minutos
+        cache.set(cache_key, metricas, timeout=getattr(settings, 'CACHE_TIMEOUT_DASHBOARD', 300))
+        print("💾 Métricas guardadas en cache")
+    else:
+        print("⚡ Métricas obtenidas del cache")
+    
+    return render(request, 'dashboard.html', {
+        'metricas': metricas
+    })
+
 
 #---------------------------------PRODUCTOS---------------------------------
 
@@ -31,8 +72,18 @@ def home(request):
 def lista_productos(request):
     from django.utils import timezone
     from datetime import timedelta
+    from django.core.paginator import Paginator
     
-    productos = Producto.objects.all()
+    # 🚀 OPTIMIZACIÓN: Usar select_related y prefetch_related para evitar consultas N+1
+    productos = Producto.objects.select_related(
+        'subcategoria__categoria',  # Para acceso a categoría
+        'proveedor',               # Para información del proveedor
+        'marca'                    # Para información de marca
+    ).prefetch_related(
+        'historial_precios',       # Para cambios de precio
+        'eventos'                  # Para eventos del sistema
+    )
+    
     form = ProductoSearchForm(request.GET)
     
     if form.is_valid():
@@ -64,10 +115,80 @@ def lista_productos(request):
             ).distinct()
             productos = productos_con_cambios
     
-    return render(request, 'lista_productos.html', {
-        'productos': productos,
-        'form': form
+    # � PAGINACIÓN: Mostrar 25 productos por página
+    paginator = Paginator(productos, 25)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # �📊 DEBUG: Mostrar cantidad de consultas (temporal)
+    from django.db import connection
+    initial_queries = len(connection.queries)
+    
+    # Renderizar template
+    response = render(request, 'lista_productos.html', {
+        'page_obj': page_obj,
+        'productos': page_obj,  # Compatibilidad con template actual
+        'form': form,
+        'is_paginated': paginator.num_pages > 1,
+        'total_productos': paginator.count
     })
+    
+    # 📊 DEBUG: Mostrar estadísticas de consultas
+    final_queries = len(connection.queries)
+    print(f"🔍 Consultas ejecutadas: {final_queries - initial_queries}")
+    print(f"📦 Productos en página: {len(page_obj)}")
+    print(f"📊 Total productos: {paginator.count}")
+    print(f"📄 Página {page_obj.number} de {paginator.num_pages}")
+    
+    return response
+
+@login_required
+def busqueda_productos_ajax(request):
+    """Vista AJAX para búsqueda rápida de productos"""
+    if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        return JsonResponse({'error': 'Solicitud no válida'}, status=400)
+    
+    query = request.GET.get('q', '').strip()
+    categoria_id = request.GET.get('categoria')
+    proveedor_id = request.GET.get('proveedor')
+    
+    if len(query) < 2:
+        return JsonResponse({'productos': []})
+    
+    # Cache para búsquedas frecuentes
+    cache_key = f'busqueda_{query}_{categoria_id}_{proveedor_id}'
+    resultados = cache.get(cache_key)
+    
+    if resultados is None:
+        productos = Producto.objects.select_related(
+            'subcategoria__categoria', 'proveedor', 'marca'
+        ).filter(
+            Q(nombre__icontains=query) | 
+            Q(codigo__icontains=query) |
+            Q(marca__nombre__icontains=query)
+        )
+        
+        if categoria_id:
+            productos = productos.filter(subcategoria__categoria_id=categoria_id)
+        if proveedor_id:
+            productos = productos.filter(proveedor_id=proveedor_id)
+            
+        productos = productos[:10]  # Limitar a 10 resultados
+        
+        resultados = [{
+            'id': p.id,
+            'nombre': p.nombre,
+            'codigo': p.codigo,
+            'precio': float(p.precio_venta_final),
+            'stock': p.cantidad_stock,
+            'categoria': p.subcategoria.categoria.nombre,
+            'proveedor': p.proveedor.nombre if p.proveedor else ''
+        } for p in productos]
+        
+        # Guardar en cache por 2 minutos
+        cache.set(cache_key, resultados, timeout=120)
+    
+    return JsonResponse({'productos': resultados})
 
 @admin_o_encargado
 def crear_producto(request):
@@ -88,6 +209,9 @@ def crear_producto(request):
                     observacion='Stock inicial'
                 )
             
+            # Limpiar cache de productos y métricas
+            limpiar_cache_productos()
+            
             messages.success(request, 'Producto creado exitosamente.')
             return redirect('lista_productos')
     else:
@@ -104,6 +228,10 @@ def editar_producto(request, pk):
         form = ProductoForm(request.POST, instance=producto)
         if form.is_valid():
             form.save()
+            
+            # Limpiar cache de productos y métricas
+            limpiar_cache_productos()
+            
             messages.success(request, 'Producto actualizado exitosamente.')
             return redirect('lista_productos')
     else:

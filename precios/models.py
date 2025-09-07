@@ -154,6 +154,17 @@ class Producto(models.Model):
     class Meta:
         verbose_name_plural = "Productos"
         ordering = ['nombre']
+        # 🚀 ÍNDICES PARA MEJOR PERFORMANCE
+        indexes = [
+            models.Index(fields=['nombre'], name='producto_nombre_idx'),
+            models.Index(fields=['precio_venta_final'], name='producto_precio_idx'),
+            models.Index(fields=['cantidad_stock'], name='producto_stock_idx'),
+            models.Index(fields=['fecha_creacion'], name='producto_fecha_idx'),
+            models.Index(fields=['subcategoria', 'activo'], name='producto_cat_activo_idx'),
+            models.Index(fields=['proveedor', 'activo'], name='producto_prov_activo_idx'),
+            models.Index(fields=['alerta_stock'], name='producto_alerta_idx'),
+            models.Index(fields=['activo', 'cantidad_stock'], name='producto_estado_stock_idx'),
+        ]
 
     def __str__(self):
         return self.nombre

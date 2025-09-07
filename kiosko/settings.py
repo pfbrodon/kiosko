@@ -135,3 +135,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'usuarios:login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'usuarios:login'
+
+# Configuración de Cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'kiosko-cache',
+        'TIMEOUT': 300,  # 5 minutos por defecto
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+            'CULL_FREQUENCY': 3,
+        }
+    }
+}
+
+# Cache específico para el dashboard y métricas
+CACHE_TIMEOUT_DASHBOARD = 300  # 5 minutos
+CACHE_TIMEOUT_PRODUCTOS = 60   # 1 minuto
+CACHE_TIMEOUT_METRICAS = 180   # 3 minutos
