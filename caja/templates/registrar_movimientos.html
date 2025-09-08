@@ -97,7 +97,7 @@
                                 {% endif %}
                                 {{ recreo_form.monto }}
                             </div>
-                            <button type="submit" name="agregar_recreo" class="btn btn-{% if caja.es_extra %}warning{% else %}primary{% endif %}">
+                            <button type="button" class="btn btn-{% if caja.es_extra %}warning{% else %}primary{% endif %}" onclick="confirmarRecreo()">
                                 <i class="fas fa-plus me-2"></i>
                                 {% if caja.es_extra %}
                                     Registrar Ingreso Extra
@@ -307,4 +307,80 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Confirmación para Recreo -->
+<div class="modal fade" id="confirmarRecreoModal" tabindex="-1" aria-labelledby="confirmarRecreoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmarRecreoModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirmar {% if caja.es_extra %}Ingreso Extra{% else %}Recreo{% endif %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">¿Estás seguro que deseas registrar este {% if caja.es_extra %}ingreso extra{% else %}recreo{% endif %}?</p>
+                <div class="alert alert-info">
+                    <strong>
+                        {% if caja.es_extra %}
+                            Monto del Ingreso Extra:
+                        {% else %}
+                            Recreo {{ proximo_recreo }}:
+                        {% endif %}
+                    </strong>
+                    <span id="montoConfirmacion">$0.00</span>
+                </div>
+                <p class="text-muted small mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Esta acción no se puede deshacer fácilmente.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-{% if caja.es_extra %}warning{% else %}primary{% endif %}" onclick="ejecutarRecreo()">
+                    <i class="fas fa-check me-2"></i>Confirmar {% if caja.es_extra %}Ingreso{% else %}Recreo{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarRecreo() {
+    const montoInput = document.querySelector('input[name="monto"]');
+    const monto = parseFloat(montoInput.value) || 0;
+    
+    if (monto <= 0) {
+        alert('Por favor ingresa un monto válido mayor a 0');
+        montoInput.focus();
+        return;
+    }
+    
+    // Actualizar el monto en el modal
+    document.getElementById('montoConfirmacion').textContent = '$' + monto.toFixed(2);
+    
+    // Mostrar el modal
+    const modal = new bootstrap.Modal(document.getElementById('confirmarRecreoModal'));
+    modal.show();
+}
+
+function ejecutarRecreo() {
+    // Cerrar el modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmarRecreoModal'));
+    modal.hide();
+    
+    // Crear y enviar el formulario
+    const form = document.querySelector('form[method="post"]');
+    const submitButton = document.createElement('input');
+    submitButton.type = 'hidden';
+    submitButton.name = 'agregar_recreo';
+    submitButton.value = '1';
+    form.appendChild(submitButton);
+    form.submit();
+}
+</script>
+
 {% endblock %}
