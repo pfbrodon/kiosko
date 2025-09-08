@@ -227,7 +227,7 @@
                     <form method="post">
                         {% csrf_token %}
                         {{ pago_form.as_p }}
-                        <button type="submit" name="agregar_pago" class="btn btn-danger">
+                        <button type="button" class="btn btn-danger" onclick="confirmarPago()">
                             <i class="fas fa-minus me-2"></i>Registrar Pago
                         </button>
                     </form>
@@ -349,8 +349,87 @@
 </div>
 
 <script>
+function confirmarPago() {
+    console.log('=== CONFIRMAR PAGO ===');
+    
+    // Buscar el formulario de pago
+    const pagoForm = document.querySelector('select[name="proveedor"]').closest('form');
+    
+    if (!pagoForm) {
+        alert('❌ No se encontró formulario de pago');
+        return;
+    }
+    
+    const proveedorInput = pagoForm.querySelector('select[name="proveedor"]');
+    const montoInput = pagoForm.querySelector('input[name="monto"]');
+    const observacionInput = pagoForm.querySelector('textarea[name="observacion"]');
+    
+    if (!proveedorInput || !montoInput) {
+        alert('❌ Faltan campos en el formulario');
+        return;
+    }
+    
+    // Obtener valores
+    const proveedorValue = proveedorInput.value;
+    const proveedorText = proveedorInput.options[proveedorInput.selectedIndex].text;
+    const monto = parseFloat(montoInput.value) || 0;
+    const observacion = observacionInput ? observacionInput.value.trim() : '';
+    
+    // Validaciones
+    if (!proveedorValue) {
+        alert('Por favor selecciona un proveedor');
+        proveedorInput.focus();
+        return;
+    }
+    
+    if (monto <= 0) {
+        alert('Por favor ingresa un monto válido mayor a 0');
+        montoInput.focus();
+        return;
+    }
+    
+    // Crear mensaje de confirmación detallado
+    let mensaje = `¿Confirmas el pago?\n\n`;
+    mensaje += `💰 Proveedor: ${proveedorText}\n`;
+    mensaje += `💵 Monto: $${monto.toFixed(2)}\n`;
+    if (observacion) {
+        mensaje += `📝 Observación: ${observacion}\n`;
+    }
+    mensaje += `\n⚠️ Esta acción no se puede deshacer fácilmente.`;
+    
+    const confirmacion = confirm(mensaje);
+    
+    if (confirmacion) {
+        // Agregar campo identificador
+        const submitInput = document.createElement('input');
+        submitInput.type = 'hidden';
+        submitInput.name = 'agregar_pago';
+        submitInput.value = '1';
+        pagoForm.appendChild(submitInput);
+        
+        console.log('✅ Enviando formulario de pago...');
+        pagoForm.submit();
+    } else {
+        console.log('❌ Pago cancelado por el usuario');
+    }
+}
+
 function confirmarRecreo() {
-    const montoInput = document.querySelector('input[name="monto"]');
+    // Buscar específicamente el formulario de recreo (que tiene input[name="numero"])
+    const numeroInput = document.querySelector('input[name="numero"]');
+    if (!numeroInput) {
+        alert('Error: No se encontró el formulario de recreo');
+        return;
+    }
+    
+    const recreoForm = numeroInput.closest('form');
+    const montoInput = recreoForm.querySelector('input[name="monto"]');
+    
+    if (!montoInput) {
+        alert('Error: No se encontró el campo de monto del recreo');
+        return;
+    }
+    
     const monto = parseFloat(montoInput.value) || 0;
     
     if (monto <= 0) {
@@ -372,14 +451,17 @@ function ejecutarRecreo() {
     const modal = bootstrap.Modal.getInstance(document.getElementById('confirmarRecreoModal'));
     modal.hide();
     
-    // Crear y enviar el formulario
-    const form = document.querySelector('form[method="post"]');
-    const submitButton = document.createElement('input');
-    submitButton.type = 'hidden';
-    submitButton.name = 'agregar_recreo';
-    submitButton.value = '1';
-    form.appendChild(submitButton);
-    form.submit();
+    // Buscar específicamente el formulario de recreo
+    const numeroInput = document.querySelector('input[name="numero"]');
+    if (numeroInput) {
+        const recreoForm = numeroInput.closest('form');
+        const submitButton = document.createElement('input');
+        submitButton.type = 'hidden';
+        submitButton.name = 'agregar_recreo';
+        submitButton.value = '1';
+        recreoForm.appendChild(submitButton);
+        recreoForm.submit();
+    }
 }
 </script>
 

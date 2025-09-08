@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test JavaScript</title>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <!-- Simular campos de formulario -->
+    <form>
+        <select name="proveedor">
+            <option value="">Seleccionar</option>
+            <option value="1">Proveedor Test</option>
+        </select>
+        <input type="number" name="monto" />
+        <textarea name="descripcion"></textarea>
+    </form>
+    
+    <form>
+        <input type="hidden" name="numero" value="1" />
+        <input type="number" name="monto" />
+    </form>
+
+<script>
+function confirmarPago() {
+    // Buscar específicamente los campos del formulario de pago
+    const proveedorInput = document.querySelector('select[name="proveedor"]');
+    const montoInputs = document.querySelectorAll('input[name="monto"]');
+    const descripcionInput = document.querySelector('textarea[name="descripcion"]');
+    
+    // El monto del pago es el que está en el mismo formulario que el proveedor
+    let montoInput = null;
+    for (let input of montoInputs) {
+        if (input.closest('form').querySelector('select[name="proveedor"]')) {
+            montoInput = input;
+            break;
+        }
+    }
+    
+    if (!proveedorInput || !montoInput || !descripcionInput) {
+        alert('Error: No se encontraron los campos del formulario de pago');
+        return;
+    }
+    
+    console.log('Función confirmarPago OK');
+}
+
+function confirmarRecreo() {
+    // Buscar específicamente el formulario de recreo (que tiene input[name="numero"])
+    const numeroInput = document.querySelector('input[name="numero"]');
+    if (!numeroInput) {
+        alert('Error: No se encontró el formulario de recreo');
+        return;
+    }
+    
+    const recreoForm = numeroInput.closest('form');
+    const montoInput = recreoForm.querySelector('input[name="monto"]');
+    
+    if (!montoInput) {
+        alert('Error: No se encontró el campo de monto del recreo');
+        return;
+    }
+    
+    console.log('Función confirmarRecreo OK');
+}
+
+// Test
+confirmarPago();
+confirmarRecreo();
+</script>
+</body>
+</html>
