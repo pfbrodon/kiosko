@@ -38,10 +38,14 @@
                                 <td>{{ categoria.subcategorias.count }}</td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="#" class="btn btn-sm btn-warning">
+                                        <a href="{% url 'editar_categoria' categoria.pk %}" 
+                                           class="btn btn-sm btn-warning"
+                                           title="Editar categoría">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="#" class="btn btn-sm btn-danger">
+                                        <a href="{% url 'eliminar_categoria' categoria.pk %}" 
+                                           class="btn btn-sm btn-danger"
+                                           title="Eliminar categoría">
                                             <i class="fas fa-trash"></i>
                                         </a>
                                     </div>

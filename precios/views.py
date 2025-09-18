@@ -448,6 +448,59 @@ def crear_categoria(request):
         form = CategoriaForm()
     return render(request, 'crear_categoria.html', {'form': form})
 
+@admin_o_encargado
+def editar_categoria(request, pk):
+    categoria = get_object_or_404(Categoria, pk=pk)
+    
+    if request.method == 'POST':
+        form = CategoriaForm(request.POST, instance=categoria)
+        if form.is_valid():
+            form.save()
+            limpiar_cache_productos()  # Limpiar cache por si afecta productos
+            messages.success(request, f'Categoría "{categoria.nombre}" actualizada exitosamente.')
+            return redirect('lista_categorias')
+    else:
+        form = CategoriaForm(instance=categoria)
+    
+    return render(request, 'editar_categoria.html', {
+        'form': form, 
+        'categoria': categoria
+    })
+
+@admin_o_encargado
+def eliminar_categoria(request, pk):
+    categoria = get_object_or_404(Categoria, pk=pk)
+    
+    # Verificar si la categoría tiene subcategorías asociadas
+    subcategorias_count = categoria.subcategorias.count()
+    
+    # Verificar si hay productos asociados a través de subcategorías
+    productos_count = 0
+    for subcategoria in categoria.subcategorias.all():
+        productos_count += subcategoria.producto_set.count()
+    
+    if request.method == 'POST':
+        if subcategorias_count > 0 or productos_count > 0:
+            messages.error(request, 
+                f'No se puede eliminar la categoría "{categoria.nombre}" porque tiene '
+                f'{subcategorias_count} subcategoría(s) y {productos_count} producto(s) asociado(s). '
+                'Elimine primero las subcategorías y productos relacionados.'
+            )
+        else:
+            nombre_categoria = categoria.nombre
+            categoria.delete()
+            limpiar_cache_productos()  # Limpiar cache
+            messages.success(request, f'Categoría "{nombre_categoria}" eliminada exitosamente.')
+        
+        return redirect('lista_categorias')
+    
+    return render(request, 'confirmar_eliminar_categoria.html', {
+        'categoria': categoria,
+        'subcategorias_count': subcategorias_count,
+        'productos_count': productos_count,
+        'puede_eliminar': subcategorias_count == 0 and productos_count == 0
+    })
+
 
 
 #---------------------------------PROVEEDORES---------------------------------
