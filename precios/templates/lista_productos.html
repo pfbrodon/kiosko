@@ -49,6 +49,47 @@
     vertical-align: middle !important;
 }
 
+/* Estilos para filtrado dinámico */
+#loadingIndicator {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Indicador de filtrado activo */
+.filtering {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+/* Animación suave para cambios de contenido */
+#productosTableBody tr {
+    transition: all 0.3s ease;
+}
+
+/* Paginación más compacta */
+.pagination-sm .page-link {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Mejorar la accesibilidad de los botones de paginación */
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
 .table th:nth-child(2), /* Header Marca */
 .table th:nth-child(5)  /* Header Proveedor */ {
     width: 80px;
@@ -111,6 +152,20 @@
         </div>
     </div>
 
+    <!-- Indicador de carga -->
+    <div id="loadingIndicator" class="text-center py-3" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2 text-muted">Filtrando productos...</p>
+    </div>
+
+    <!-- Información de resultados -->
+    <div id="resultInfo" class="alert alert-info mb-3" style="display: none;">
+        <i class="fas fa-info-circle me-2"></i>
+        <span id="resultText"></span>
+    </div>
+
     <!-- Tabla de productos -->
     <div class="card">
         <div class="card-body">
@@ -132,7 +187,8 @@
                             <th>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="productosTableBody">
+                        <!-- Contenido dinámico cargado por JavaScript -->
                         {% for producto in productos %}
                         <tr>
                             <td>
@@ -216,57 +272,10 @@
                 </table>
             </div>
             
-            <!-- 📄 PAGINACIÓN -->
-            {% if is_paginated %}
-            <div class="d-flex justify-content-between align-items-center mt-3">
-                <div class="text-muted">
-                    <small>
-                        Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ total_productos }} productos
-                    </small>
-                </div>
-                <nav aria-label="Paginación de productos">
-                    <ul class="pagination pagination-sm mb-0">
-                        {% if page_obj.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1" aria-label="Primera">
-                                    <span aria-hidden="true">&laquo;&laquo;</span>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}" aria-label="Anterior">
-                                    <span aria-hidden="true">&laquo;</span>
-                                </a>
-                            </li>
-                        {% endif %}
-                        
-                        {% for num in page_obj.paginator.page_range %}
-                            {% if page_obj.number == num %}
-                                <li class="page-item active">
-                                    <span class="page-link">{{ num }}</span>
-                                </li>
-                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
-                                </li>
-                            {% endif %}
-                        {% endfor %}
-                        
-                        {% if page_obj.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}" aria-label="Siguiente">
-                                    <span aria-hidden="true">&raquo;</span>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}" aria-label="Última">
-                                    <span aria-hidden="true">&raquo;&raquo;</span>
-                                </a>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </nav>
+            <!-- 📄 PAGINACIÓN DINÁMICA -->
+            <div id="paginationContainer" class="d-flex justify-content-between align-items-center mt-3">
+                <!-- Se llenará dinámicamente -->
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -296,6 +305,11 @@
 
 {% block extra_js %}
 <script>
+// Variables globales para el filtrado dinámico
+let filterTimeout;
+let currentPage = 1;
+let isLoading = false;
+
 function confirmarEliminar(id, nombre) {
     const modal = new bootstrap.Modal(document.getElementById('eliminarModal'));
     document.getElementById('productoNombre').textContent = nombre;
@@ -318,8 +332,249 @@ function resetForm() {
         input.value = '';
     });
     
-    // Enviar el formulario
-    form.submit();
+    // Realizar filtrado dinámico inmediatamente
+    currentPage = 1;
+    filtrarProductos();
 }
+
+// Función de debounce para evitar demasiadas peticiones
+function debounce(func, wait) {
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(filterTimeout);
+            func(...args);
+        };
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(later, wait);
+    };
+}
+
+// Función principal de filtrado dinámico
+function filtrarProductos(page = 1) {
+    if (isLoading) return;
+    
+    isLoading = true;
+    currentPage = page;
+    
+    // Mostrar indicador de carga
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('resultInfo').style.display = 'none';
+    
+    // Obtener valores del formulario
+    const form = document.getElementById('searchForm');
+    const formData = new FormData(form);
+    const params = new URLSearchParams();
+    
+    // Agregar todos los parámetros
+    for (let [key, value] of formData.entries()) {
+        if (value) {
+            params.append(key, value);
+        }
+    }
+    params.append('page', page);
+    
+    // Realizar petición AJAX
+    fetch(`{% url 'filtrar_productos_dinamico' %}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateProductTable(data);
+        updatePagination(data);
+        updateResultInfo(data);
+        isLoading = false;
+        document.getElementById('loadingIndicator').style.display = 'none';
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        isLoading = false;
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        // Mostrar mensaje de error
+        const tbody = document.getElementById('productosTableBody');
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Error al cargar productos</td></tr>';
+    });
+}
+
+// Actualizar tabla de productos
+function updateProductTable(data) {
+    const tbody = document.getElementById('productosTableBody');
+    
+    if (data.productos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center">No se encontraron productos</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    data.productos.forEach(producto => {
+        html += `
+        <tr>
+            <td>
+                ${producto.precio_modificado ? '<span class="me-2" title="Precio modificado recientemente"><i class="fas fa-circle precio-modificado"></i></span>' : ''}
+                ${producto.es_nuevo ? '<span class="me-2" title="Producto nuevo"><i class="fas fa-star producto-nuevo"></i></span>' : ''}
+                ${producto.nombre}
+            </td>
+            <td class="small text-muted align-middle">${producto.marca || 'Sin marca'}</td>
+            <td>${producto.categoria}</td>
+            <td>${producto.subcategoria}</td>
+            <td class="small text-muted align-middle">${producto.proveedor || ''}</td>
+            <td class="text-end">
+                ${producto.alerta_stock ? `<span class="text-danger fw-bold">${producto.stock}</span>` : `<span>${producto.stock}</span>`}
+            </td>
+            <td class="text-end">${producto.stock_minimo}</td>
+            <td class="text-end">$${producto.precio_compra.toFixed(2)}</td>
+            <td class="text-end">
+                ${producto.descuento_compra > 0 ? 
+                    `<span class="text-success">${producto.descuento_compra.toFixed(1)}%</span>` : 
+                    '<span class="text-muted">0%</span>'
+                }
+            </td>
+            <td class="text-end fw-bold">$${producto.precio_venta.toFixed(2)}</td>
+            <td>
+                ${producto.activo ? 
+                    (producto.alerta_stock ? '<span class="badge bg-warning">Stock Bajo</span>' : '<span class="badge bg-success">Activo</span>') : 
+                    '<span class="badge bg-danger">Inactivo</span>'
+                }
+            </td>
+            <td>
+                <div class="btn-group">
+                    <a href="/productos/${producto.id}/editar/" class="btn btn-sm btn-warning" title="Editar producto">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="/productos/${producto.id}/movimientos/" class="btn btn-sm btn-info" title="Movimientos de stock">
+                        <i class="fas fa-boxes"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="confirmarEliminar(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}')" title="Eliminar producto">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+// Actualizar paginación
+function updatePagination(data) {
+    const container = document.getElementById('paginationContainer');
+    
+    if (data.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = `
+    <div class="text-muted">
+        <small>Mostrando ${data.start_index}-${data.end_index} de ${data.total_productos} productos</small>
+    </div>
+    <nav aria-label="Paginación de productos">
+        <ul class="pagination pagination-sm mb-0">
+    `;
+    
+    // Botón primera página
+    if (data.has_previous) {
+        html += `
+        <li class="page-item">
+            <a class="page-link" href="#" onclick="filtrarProductos(1)" aria-label="Primera">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="#" onclick="filtrarProductos(${data.current_page - 1})" aria-label="Anterior">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        `;
+    }
+    
+    // Páginas numéricas
+    const startPage = Math.max(1, data.current_page - 2);
+    const endPage = Math.min(data.total_pages, data.current_page + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === data.current_page) {
+            html += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+        } else {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="filtrarProductos(${i})">${i}</a></li>`;
+        }
+    }
+    
+    // Botón última página
+    if (data.has_next) {
+        html += `
+        <li class="page-item">
+            <a class="page-link" href="#" onclick="filtrarProductos(${data.current_page + 1})" aria-label="Siguiente">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="#" onclick="filtrarProductos(${data.total_pages})" aria-label="Última">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        `;
+    }
+    
+    html += '</ul></nav>';
+    container.innerHTML = html;
+}
+
+// Actualizar información de resultados
+function updateResultInfo(data) {
+    const resultInfo = document.getElementById('resultInfo');
+    const resultText = document.getElementById('resultText');
+    
+    if (data.total_productos > 0) {
+        resultText.textContent = `Se encontraron ${data.total_productos} productos`;
+        resultInfo.className = 'alert alert-info mb-3';
+        resultInfo.style.display = 'block';
+    } else {
+        resultText.textContent = 'No se encontraron productos con los filtros aplicados';
+        resultInfo.className = 'alert alert-warning mb-3';
+        resultInfo.style.display = 'block';
+    }
+}
+
+// Event listeners para filtrado dinámico
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('searchForm');
+    const busquedaInput = form.querySelector('input[name="busqueda"]');
+    const selects = form.querySelectorAll('select');
+    
+    // Filtrado dinámico para el campo de búsqueda con debounce
+    if (busquedaInput) {
+        busquedaInput.addEventListener('input', debounce(() => {
+            currentPage = 1;
+            filtrarProductos();
+        }, 500));
+    }
+    
+    // Filtrado inmediato para selects
+    selects.forEach(select => {
+        select.addEventListener('change', () => {
+            currentPage = 1;
+            filtrarProductos();
+        });
+    });
+    
+    // Prevenir envío del formulario tradicional
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        filtrarProductos();
+    });
+    
+    // Cargar productos inicialmente si no hay datos
+    const tbody = document.getElementById('productosTableBody');
+    if (tbody.children.length === 1 && tbody.textContent.includes('No se encontraron productos')) {
+        filtrarProductos();
+    }
+});
 </script>
 {% endblock %}

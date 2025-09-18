@@ -6,6 +6,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('productos/', views.lista_productos, name='lista_productos'),
     path('productos/buscar/', views.busqueda_productos_ajax, name='busqueda_productos_ajax'),
+    path('productos/filtrar/', views.filtrar_productos_dinamico, name='filtrar_productos_dinamico'),
     path('productos/<int:pk>/editar/', views.editar_producto, name='editar_producto'),
     path('productos/crear/', views.crear_producto, name='crear_producto'),
     path('productos/<int:pk>/eliminar/', views.eliminar_producto, name='eliminar_producto'),

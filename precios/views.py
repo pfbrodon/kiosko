@@ -164,7 +164,7 @@ def busqueda_productos_ajax(request):
             'subcategoria__categoria', 'proveedor', 'marca'
         ).filter(
             Q(nombre__icontains=query) | 
-            Q(codigo__icontains=query) |
+            Q(descripcion__icontains=query) |
             Q(marca__nombre__icontains=query)
         )
         
@@ -178,7 +178,7 @@ def busqueda_productos_ajax(request):
         resultados = [{
             'id': p.id,
             'nombre': p.nombre,
-            'codigo': p.codigo,
+            'descripcion': p.descripcion or '',
             'precio': float(p.precio_venta_final),
             'stock': p.cantidad_stock,
             'categoria': p.subcategoria.categoria.nombre,
@@ -189,6 +189,126 @@ def busqueda_productos_ajax(request):
         cache.set(cache_key, resultados, timeout=120)
     
     return JsonResponse({'productos': resultados})
+
+@login_required
+def filtrar_productos_dinamico(request):
+    """Vista AJAX para filtrado dinámico de productos con todos los filtros"""
+    if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        return JsonResponse({'error': 'Solicitud no válida'}, status=400)
+    
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Obtener parámetros de filtrado
+    busqueda = request.GET.get('busqueda', '').strip()
+    categoria_id = request.GET.get('categoria')
+    subcategoria_id = request.GET.get('subcategoria')
+    proveedor_id = request.GET.get('proveedor')
+    estado = request.GET.get('estado')
+    precio_modificado = request.GET.get('precio_modificado')
+    page = int(request.GET.get('page', 1))
+    
+    # Base de productos con optimización
+    productos = Producto.objects.select_related(
+        'subcategoria__categoria',
+        'proveedor',
+        'marca'
+    ).prefetch_related(
+        'historial_precios',
+        'eventos'
+    )
+    
+    # Aplicar filtros
+    if busqueda and len(busqueda) >= 1:
+        productos = productos.filter(
+            Q(nombre__icontains=busqueda) | 
+            Q(descripcion__icontains=busqueda) |
+            Q(marca__nombre__icontains=busqueda)
+        )
+    
+    if categoria_id:
+        productos = productos.filter(subcategoria__categoria_id=categoria_id)
+    
+    if subcategoria_id:
+        productos = productos.filter(subcategoria_id=subcategoria_id)
+    
+    if proveedor_id:
+        productos = productos.filter(proveedor_id=proveedor_id)
+    
+    if estado:
+        if estado == '1':
+            productos = productos.filter(activo=True)
+        elif estado == '0':
+            productos = productos.filter(activo=False)
+        elif estado == 'B':
+            productos = productos.filter(alerta_stock=True)
+        elif estado == 'N':
+            fecha_limite = timezone.now() - timedelta(hours=72)
+            productos = productos.filter(fecha_creacion__gte=fecha_limite)
+    
+    if precio_modificado:
+        try:
+            horas = int(precio_modificado)
+            fecha_limite = timezone.now() - timedelta(hours=horas)
+            productos = productos.filter(
+                historial_precios__fecha_cambio__gte=fecha_limite
+            ).distinct()
+        except ValueError:
+            pass
+    
+    # Paginación
+    from django.core.paginator import Paginator
+    paginator = Paginator(productos, 25)
+    page_obj = paginator.get_page(page)
+    
+    # Preparar datos para respuesta
+    productos_data = []
+    for producto in page_obj:
+        # Verificar si el precio fue modificado recientemente
+        precio_modificado_reciente = False
+        if precio_modificado:
+            try:
+                horas = int(precio_modificado)
+                fecha_limite = timezone.now() - timedelta(hours=horas)
+                precio_modificado_reciente = producto.historial_precios.filter(
+                    fecha_cambio__gte=fecha_limite
+                ).exists()
+            except:
+                pass
+        
+        # Verificar si es producto nuevo
+        es_nuevo = (timezone.now() - producto.fecha_creacion).total_seconds() < 72 * 3600
+        
+        productos_data.append({
+            'id': producto.id,
+            'nombre': producto.nombre,
+            'descripcion': producto.descripcion or '',
+            'marca': producto.marca.nombre if producto.marca else '',
+            'categoria': producto.subcategoria.categoria.nombre,
+            'subcategoria': producto.subcategoria.nombre,
+            'proveedor': producto.proveedor.nombre if producto.proveedor else '',
+            'precio_compra': float(producto.precio_compra_unitario) if producto.precio_compra_unitario else 0,
+            'precio_venta': float(producto.precio_venta_final),
+            'stock': producto.cantidad_stock,
+            'stock_minimo': producto.stock_minimo,
+            'descuento_compra': float(producto.descuento_compra) if producto.descuento_compra else 0,
+            'activo': producto.activo,
+            'alerta_stock': producto.alerta_stock,
+            'precio_modificado': precio_modificado_reciente,
+            'es_nuevo': es_nuevo,
+            'fecha_creacion': producto.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+        })
+    
+    return JsonResponse({
+        'productos': productos_data,
+        'has_previous': page_obj.has_previous(),
+        'has_next': page_obj.has_next(),
+        'current_page': page_obj.number,
+        'total_pages': paginator.num_pages,
+        'total_productos': paginator.count,
+        'start_index': page_obj.start_index(),
+        'end_index': page_obj.end_index(),
+    })
 
 @admin_o_encargado
 def crear_producto(request):
