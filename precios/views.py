@@ -599,7 +599,15 @@ def eliminar_marca(request, pk):
 
 @login_required
 def lista_precios_pdf(request):
+    if not REPORTLAB_AVAILABLE:
+        messages.error(request, 'ReportLab no está disponible. No se puede generar el PDF.')
+        return redirect('lista_productos')
+    
     from .models import Subcategoria
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -661,3 +669,261 @@ def lista_precios_pdf(request):
     p.save()
     buffer.seek(0)
     return HttpResponse(buffer, content_type='application/pdf')
+
+@login_required
+def productos_filtrados_pdf(request):
+    """Genera PDF con productos filtrados según los parámetros enviados"""
+    if not REPORTLAB_AVAILABLE:
+        messages.error(request, 'ReportLab no está disponible. No se puede generar el PDF.')
+        return redirect('lista_productos')
+    
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Obtener parámetros de filtrado (mismos que filtrar_productos_dinamico)
+    busqueda = request.GET.get('busqueda', '').strip()
+    categoria_id = request.GET.get('categoria')
+    subcategoria_id = request.GET.get('subcategoria')
+    proveedor_id = request.GET.get('proveedor')
+    estado = request.GET.get('estado')
+    precio_modificado = request.GET.get('precio_modificado')
+    
+    # Aplicar filtros (mismo código que filtrar_productos_dinamico)
+    productos = Producto.objects.select_related(
+        'subcategoria__categoria',
+        'proveedor',
+        'marca'
+    ).prefetch_related(
+        'historial_precios',
+        'eventos'
+    )
+    
+    # Variables para título del PDF
+    filtros_aplicados = []
+    
+    if busqueda and len(busqueda) >= 1:
+        productos = productos.filter(
+            Q(nombre__icontains=busqueda) | 
+            Q(descripcion__icontains=busqueda) |
+            Q(marca__nombre__icontains=busqueda)
+        )
+        filtros_aplicados.append(f'Búsqueda: "{busqueda}"')
+    
+    if categoria_id:
+        productos = productos.filter(subcategoria__categoria_id=categoria_id)
+        categoria = get_object_or_404(Categoria, id=categoria_id)
+        filtros_aplicados.append(f'Categoría: {categoria.nombre}')
+    
+    if subcategoria_id:
+        productos = productos.filter(subcategoria_id=subcategoria_id)
+        subcategoria = get_object_or_404(Subcategoria, id=subcategoria_id)
+        filtros_aplicados.append(f'Subcategoría: {subcategoria.nombre}')
+    
+    if proveedor_id:
+        productos = productos.filter(proveedor_id=proveedor_id)
+        proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+        filtros_aplicados.append(f'Proveedor: {proveedor.nombre}')
+    
+    if estado:
+        if estado == '1':
+            productos = productos.filter(activo=True)
+            filtros_aplicados.append('Estado: Activos')
+        elif estado == '0':
+            productos = productos.filter(activo=False)
+            filtros_aplicados.append('Estado: Inactivos')
+        elif estado == 'B':
+            productos = productos.filter(alerta_stock=True)
+            filtros_aplicados.append('Estado: Stock Bajo')
+        elif estado == 'N':
+            fecha_limite = timezone.now() - timedelta(hours=72)
+            productos = productos.filter(fecha_creacion__gte=fecha_limite)
+            filtros_aplicados.append('Estado: Productos Nuevos')
+    
+    if precio_modificado:
+        try:
+            horas = int(precio_modificado)
+            fecha_limite = timezone.now() - timedelta(hours=horas)
+            productos = productos.filter(
+                historial_precios__fecha_cambio__gte=fecha_limite
+            ).distinct()
+            filtros_aplicados.append(f'Precio modificado: últimas {horas} horas')
+        except ValueError:
+            pass
+    
+    # Ordenar productos por categoría, subcategoría y nombre
+    productos = productos.order_by(
+        'subcategoria__categoria__nombre',
+        'subcategoria__nombre', 
+        'nombre'
+    )
+    
+    # Crear PDF
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    margin_x = 30
+    margin_y = 30
+    y_start = height - margin_y
+    y = y_start
+    
+    # Título
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(margin_x, y, "Lista de Productos Filtrados")
+    y -= 25
+    
+    # Información de filtros aplicados
+    if filtros_aplicados:
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(margin_x, y, "Filtros aplicados:")
+        y -= 15
+        p.setFont("Helvetica", 9)
+        for filtro in filtros_aplicados[:5]:  # Máximo 5 filtros para que quepa
+            p.drawString(margin_x + 10, y, f"• {filtro}")
+            y -= 12
+    else:
+        p.setFont("Helvetica", 10)
+        p.drawString(margin_x, y, "Todos los productos")
+        y -= 15
+    
+    # Información de resultados
+    total_productos = productos.count()
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(margin_x, y, f"Total de productos: {total_productos}")
+    y -= 20
+    
+    # Fecha de generación
+    from django.utils import timezone
+    fecha_actual = timezone.now().strftime('%d/%m/%Y %H:%M')
+    p.setFont("Helvetica", 8)
+    p.drawString(margin_x, y, f"Generado el: {fecha_actual}")
+    y -= 25
+    
+    if not productos.exists():
+        p.setFont("Helvetica", 12)
+        p.drawString(margin_x, y, "No se encontraron productos con los filtros aplicados.")
+        p.save()
+        buffer.seek(0)
+        return HttpResponse(buffer, content_type='application/pdf')
+    
+    # Cabeceras de tabla
+    p.setFont("Helvetica-Bold", 10)
+    col_x = [margin_x, margin_x + 200, margin_x + 320, margin_x + 420, margin_x + 480]
+    headers = ["Producto", "Categoría", "Subcategoría", "Stock", "Precio"]
+    
+    for i, header in enumerate(headers):
+        p.drawString(col_x[i], y, header)
+    
+    y -= 15
+    
+    # Línea separadora
+    p.line(margin_x, y, width - margin_x, y)
+    y -= 10
+    
+    # Productos
+    p.setFont("Helvetica", 9)
+    categoria_actual = None
+    
+    for producto in productos:
+        # Verificar si necesitamos una nueva página
+        if y < 50:
+            p.showPage()
+            y = y_start
+            
+            # Repetir cabeceras en nueva página
+            p.setFont("Helvetica-Bold", 10)
+            for i, header in enumerate(headers):
+                p.drawString(col_x[i], y, header)
+            y -= 15
+            p.line(margin_x, y, width - margin_x, y)
+            y -= 10
+            p.setFont("Helvetica", 9)
+        
+        # Separador por categoría
+        if categoria_actual != producto.subcategoria.categoria.nombre:
+            categoria_actual = producto.subcategoria.categoria.nombre
+            p.setFont("Helvetica-Bold", 9)
+            p.setFillColor(colors.HexColor('#0d6efd'))
+            p.drawString(margin_x, y, f"CATEGORÍA: {categoria_actual}")
+            p.setFillColor(colors.black)
+            y -= 15
+            p.setFont("Helvetica", 9)
+        
+        # Datos del producto
+        nombre_producto = producto.nombre[:35] + "..." if len(producto.nombre) > 35 else producto.nombre
+        
+        # Verificar si es producto nuevo
+        es_nuevo = (timezone.now() - producto.fecha_creacion).total_seconds() < 72 * 3600
+        
+        # Colorear si tiene alerta de stock
+        if producto.alerta_stock:
+            p.setFillColor(colors.red)
+        elif es_nuevo:
+            p.setFillColor(colors.HexColor('#28a745'))
+        else:
+            p.setFillColor(colors.black)
+        
+        p.drawString(col_x[0], y, nombre_producto)
+        p.drawString(col_x[1], y, producto.subcategoria.categoria.nombre[:15])
+        p.drawString(col_x[2], y, producto.subcategoria.nombre[:15])
+        p.drawString(col_x[3], y, str(producto.cantidad_stock))
+        p.drawRightString(col_x[4] + 40, y, f"${producto.precio_venta_final:.2f}")
+        
+        p.setFillColor(colors.black)  # Resetear color
+        y -= 12
+    
+    # Pie de página
+    y = 30
+    p.setFont("Helvetica", 8)
+    p.drawString(margin_x, y, f"Página generada desde Sistema de Kiosko - {fecha_actual}")
+    
+    p.save()
+    buffer.seek(0)
+    
+    # Nombre del archivo basado en filtros
+    filename = "productos"
+    if busqueda:
+        filename += f"_busqueda_{busqueda[:10]}"
+    if categoria_id:
+        filename += f"_cat{categoria_id}"
+    if estado:
+        filename += f"_estado{estado}"
+    filename += f"_{timezone.now().strftime('%Y%m%d_%H%M')}.pdf"
+    
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+@login_required
+def test_pdf_simple(request):
+    """Vista de prueba simple para verificar que el PDF funciona"""
+    if not REPORTLAB_AVAILABLE:
+        return HttpResponse("ReportLab no está disponible", content_type="text/plain")
+    
+    # Crear PDF simple
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    
+    p.setFont("Helvetica-Bold", 20)
+    p.drawString(100, height - 100, "Prueba de PDF")
+    p.setFont("Helvetica", 12)
+    p.drawString(100, height - 150, "Si ves esto, el PDF funciona correctamente")
+    p.drawString(100, height - 180, f"Generado el: {timezone.now().strftime('%d/%m/%Y %H:%M')}")
+    
+    # Parámetros de prueba
+    params = dict(request.GET.items())
+    if params:
+        p.drawString(100, height - 220, "Parametros recibidos:")
+        y = height - 250
+        for key, value in params.items():
+            p.drawString(120, y, f"{key}: {value}")
+            y -= 20
+    else:
+        p.drawString(100, height - 220, "No se recibieron parametros")
+    
+    p.save()
+    buffer.seek(0)
+    
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="test_pdf.pdf"'
+    return response
