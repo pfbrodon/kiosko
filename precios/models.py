@@ -27,6 +27,11 @@ class Subcategoria(models.Model):
         unique_together = ('categoria', 'nombre')
 
     def __str__(self):
+        return self.nombre
+    
+    @property
+    def nombre_completo(self):
+        """Retorna el nombre completo con categoría para cuando sea necesario"""
         return f"{self.categoria.nombre} > {self.nombre}"
 
 
