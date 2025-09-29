@@ -85,7 +85,7 @@
                 </div>
                 <div class="card-body">
                     {% if proximo_recreo %}
-                        <form method="post">
+                        <form method="post" id="recreoForm" onkeydown="handleEnterKey(event, 'recreo')">
                             {% csrf_token %}
                             <div class="mb-3">
                                 {% if caja.es_extra %}
@@ -224,7 +224,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="pagoForm" onkeydown="handleEnterKey(event, 'pago')">
                         {% csrf_token %}
                         {{ pago_form.as_p }}
                         <button type="button" class="btn btn-danger" onclick="confirmarPago()">
@@ -349,6 +349,25 @@
 </div>
 
 <script>
+function handleEnterKey(event, formType) {
+    // Verificar si se presionó Enter (código 13)
+    if (event.key === 'Enter' || event.keyCode === 13) {
+        // Prevenir el comportamiento por defecto
+        event.preventDefault();
+        
+        console.log('Enter presionado en formulario:', formType);
+        
+        // Ejecutar la función correspondiente según el tipo de formulario
+        if (formType === 'pago') {
+            confirmarPago();
+        } else if (formType === 'recreo') {
+            confirmarRecreo();
+        }
+        
+        return false; // Prevenir propagación
+    }
+}
+
 function confirmarPago() {
     console.log('=== CONFIRMAR PAGO ===');
     
@@ -441,15 +460,69 @@ function confirmarRecreo() {
     // Actualizar el monto en el modal
     document.getElementById('montoConfirmacion').textContent = '$' + monto.toFixed(2);
     
-    // Mostrar el modal
-    const modal = new bootstrap.Modal(document.getElementById('confirmarRecreoModal'));
-    modal.show();
+    // Mostrar el modal con opciones específicas para evitar problemas
+    try {
+        const modalElement = document.getElementById('confirmarRecreoModal');
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        modal.show();
+        
+        // Agregar event listener para cuando se cierre el modal
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            console.log('Modal de recreo cerrado correctamente');
+            // Limpiar cualquier backdrop que pueda haber quedado
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            // Restaurar scroll del body
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+        }, { once: true });
+        
+    } catch (error) {
+        console.error('Error al mostrar modal:', error);
+        // Fallback: usar confirmación nativa
+        const confirmacion = confirm('¿Confirmas el recreo por $' + monto.toFixed(2) + '?');
+        if (confirmacion) {
+            ejecutarRecreo();
+        }
+    }
 }
 
 function ejecutarRecreo() {
-    // Cerrar el modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmarRecreoModal'));
-    modal.hide();
+    console.log('Ejecutando recreo...');
+    
+    // Cerrar el modal de forma más robusta
+    try {
+        const modalElement = document.getElementById('confirmarRecreoModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        
+        if (modal) {
+            modal.hide();
+        } else {
+            // Si no hay instancia, crear una nueva para cerrar
+            const newModal = new bootstrap.Modal(modalElement);
+            newModal.hide();
+        }
+        
+        // Limpiar backdrop manualmente como precaución
+        setTimeout(() => {
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+        }, 100);
+        
+    } catch (error) {
+        console.error('Error al cerrar modal:', error);
+        // Limpiar manualmente si hay error
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+    }
     
     // Buscar específicamente el formulario de recreo
     const numeroInput = document.querySelector('input[name="numero"]');
@@ -463,6 +536,83 @@ function ejecutarRecreo() {
         recreoForm.submit();
     }
 }
+
+function limpiarModales() {
+    console.log('Limpiando modales...');
+    
+    // Cerrar todos los modales abiertos
+    const modales = document.querySelectorAll('.modal');
+    modales.forEach(modalElement => {
+        try {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+        } catch (error) {
+            console.log('Error cerrando modal:', error);
+        }
+    });
+    
+    // Limpiar todos los backdrops
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(backdrop => {
+        backdrop.remove();
+        console.log('Backdrop eliminado');
+    });
+    
+    // Restaurar el body
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    
+    console.log('✅ Modales limpiados correctamente');
+}
+
+// Función para configurar eventos de teclado cuando la página carga
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Configurando eventos de teclado...');
+    
+    // Para el formulario de recreo - escuchar Enter en el campo de monto
+    const recreoMontoInput = document.querySelector('#recreoForm input[name="monto"]');
+    if (recreoMontoInput) {
+        recreoMontoInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.keyCode === 13) {
+                event.preventDefault();
+                console.log('Enter en campo monto de recreo');
+                confirmarRecreo();
+                return false;
+            }
+        });
+        console.log('✅ Event listener agregado al campo monto de recreo');
+    }
+    
+    // Para el formulario de pago - escuchar Enter en cualquier campo
+    const pagoForm = document.querySelector('#pagoForm');
+    if (pagoForm) {
+        const pagoInputs = pagoForm.querySelectorAll('input, select, textarea');
+        pagoInputs.forEach(function(input) {
+            input.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' || event.keyCode === 13) {
+                    event.preventDefault();
+                    console.log('Enter en campo de pago:', input.name);
+                    confirmarPago();
+                    return false;
+                }
+            });
+        });
+        console.log('✅ Event listeners agregados a', pagoInputs.length, 'campos del formulario de pago');
+    }
+    
+    // Agregar listener para Escape en toda la página para limpiar modales
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' || event.keyCode === 27) {
+            console.log('Escape presionado - limpiando modales');
+            limpiarModales();
+        }
+    });
+    
+    console.log('✅ Event listener para Escape agregado');
+});
 </script>
 
 {% endblock %}
