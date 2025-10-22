@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-chart-line me-2"></i>Informe de Ventas
+                        </h3>
+                        <div>
+                            <a href="{% url 'caja:informes_menu' %}" class="btn btn-light btn-sm me-2">
+                                <i class="fas fa-arrow-left me-1"></i>Volver al Menú
+                            </a>
+                            {% if datos_cajas %}
+                            <a href="{% url 'caja:exportar_ventas_excel' %}?{{ request.GET.urlencode }}" 
+                               class="btn btn-warning btn-sm">
+                                <i class="fas fa-file-excel me-1"></i>Exportar Excel
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Formulario de Filtros -->
+                    <form method="GET" class="row g-3 mb-4 p-3 bg-light rounded">
+                        <div class="col-md-2">
+                            <label for="mes" class="form-label">Mes</label>
+                            <select name="mes" id="mes" class="form-select">
+                                <option value="">Todos los meses</option>
+                                {% for num, nombre in meses %}
+                                <option value="{{ num }}" {% if mes == num|stringformat:"s" %}selected{% endif %}>
+                                    {{ nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="anio" class="form-label">Año</label>
+                            <select name="anio" id="anio" class="form-select">
+                                {% for i in "2023,2024,2025,2026"|make_list %}
+                                <option value="202{{ forloop.counter0|add:3 }}" 
+                                        {% if anio == "202"|add:forloop.counter0|add:3|stringformat:"s" %}selected{% endif %}>
+                                    202{{ forloop.counter0|add:3 }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="turno" class="form-label">Turno</label>
+                            <select name="turno" id="turno" class="form-select">
+                                <option value="">Todos los turnos</option>
+                                {% for key, value in turnos %}
+                                <option value="{{ key }}" {% if turno == key %}selected{% endif %}>
+                                    {{ value }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="nivel" class="form-label">Nivel</label>
+                            <select name="nivel" id="nivel" class="form-select">
+                                <option value="">Todos los niveles</option>
+                                {% for key, value in niveles %}
+                                <option value="{{ key }}" {% if nivel == key %}selected{% endif %}>
+                                    {{ value }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="recreo" class="form-label">Recreo</label>
+                            <select name="recreo" id="recreo" class="form-select">
+                                <option value="">Todos los recreos</option>
+                                {% for num in recreos_disponibles %}
+                                <option value="{{ num }}" {% if recreo_num == num|stringformat:"s" %}selected{% endif %}>
+                                    Recreo {{ num }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-1"></i>Filtrar
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% if datos_cajas %}
+                    <!-- Resumen de Totales -->
+                    <div class="row mb-4">
+                        <div class="col-md-2">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h6>Saldo Inicial Total</h6>
+                                    <h4>${{ total_saldo_inicial|floatformat:2 }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h6>Total Recreos</h6>
+                                    <h4>${{ total_recreos|floatformat:2 }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h6>Total Eventos</h6>
+                                    <h4>${{ total_eventos|floatformat:2 }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center">
+                                    <h6>Total Ingresos</h6>
+                                    <h4>${{ total_ingresos_general|floatformat:2 }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <h6>Total Egresos</h6>
+                                    <h4>${{ total_pagos|floatformat:2 }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-dark text-white">
+                                <div class="card-body text-center">
+                                    <h6>Saldo Final</h6>
+                                    <h4>${{ saldo_final_general|floatformat:2 }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabla de Datos -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Turno</th>
+                                    <th>Nivel</th>
+                                    <th>Saldo Inicial</th>
+                                    <th>Recreos</th>
+                                    <th>Eventos</th>
+                                    <th>Egresos</th>
+                                    <th>Saldo Final</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for data in datos_cajas %}
+                                <tr>
+                                    <td>{{ data.caja.fecha|date:"d/m/Y" }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if data.caja.turno == 'M' %}info{% else %}warning{% endif %}">
+                                            {{ data.caja.get_turno_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if data.caja.nivel == 'P' %}primary{% else %}secondary{% endif %}">
+                                            {{ data.caja.get_nivel_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">${{ data.caja.saldo_inicial|floatformat:2 }}</td>
+                                    <td class="text-end text-success">
+                                        {% if data.total_ingresos > 0 %}
+                                        +${{ data.total_ingresos|floatformat:2 }}
+                                        {% else %}
+                                        $0.00
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end text-primary">
+                                        {% if data.eventos %}
+                                        +${{ data.eventos|length }} evento{{ data.eventos|length|pluralize }}
+                                        {% else %}
+                                        $0.00
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end text-danger">
+                                        {% if data.total_egresos > 0 %}
+                                        -${{ data.total_egresos|floatformat:2 }}
+                                        {% else %}
+                                        $0.00
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        <span class="{% if data.saldo_final >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            ${{ data.saldo_final|floatformat:2 }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#detalle{{ forloop.counter }}" 
+                                                aria-expanded="false">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Fila de detalle colapsable -->
+                                <tr class="collapse" id="detalle{{ forloop.counter }}">
+                                    <td colspan="9" class="bg-light">
+                                        <div class="row">
+                                            {% if data.recreos %}
+                                            <div class="col-md-4">
+                                                <h6 class="text-success">Recreos:</h6>
+                                                <ul class="list-unstyled">
+                                                    {% for recreo in data.recreos %}
+                                                    <li>Recreo {{ recreo.numero }}: ${{ recreo.monto|floatformat:2 }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if data.eventos %}
+                                            <div class="col-md-4">
+                                                <h6 class="text-primary">Eventos Especiales:</h6>
+                                                <ul class="list-unstyled">
+                                                    {% for evento in data.eventos %}
+                                                    <li>{{ evento.descripcion }}: ${{ evento.monto|floatformat:2 }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if data.pagos %}
+                                            <div class="col-md-4">
+                                                <h6 class="text-danger">Pagos a Proveedores:</h6>
+                                                <ul class="list-unstyled">
+                                                    {% for pago in data.pagos %}
+                                                    <li>{{ pago.proveedor }}: ${{ pago.monto|floatformat:2 }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle fa-2x mb-3"></i>
+                        <h5>No se encontraron datos</h5>
+                        <p>No hay registros que coincidan con los filtros seleccionados.</p>
+                        <p class="mb-0">Prueba modificando los criterios de búsqueda.</p>
+                    </div>
+                    {% endif %}
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

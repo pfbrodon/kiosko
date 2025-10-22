@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import informes_views
 
 app_name = 'caja'
 
@@ -25,4 +26,9 @@ urlpatterns = [
     path('electronica/<int:caja_id>/cerrar/', views.cerrar_caja_electronica, name='cerrar_caja_electronica'),
     path('electronica/<int:caja_id>/ver/', views.ver_movimientos_caja_electronica, name='ver_movimientos_caja_electronica'),
     path('gestionar-saldo-electronico/', views.gestionar_saldo_electronico, name='gestionar_saldo_electronico'),
+    
+    # URLs para Informes
+    path('informes/', informes_views.informes_menu, name='informes_menu'),
+    path('informes/ventas/', informes_views.informe_ventas, name='informe_ventas'),
+    path('informes/ventas/excel/', informes_views.exportar_ventas_excel, name='exportar_ventas_excel'),
 ]

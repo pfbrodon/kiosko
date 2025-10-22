@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Informes de Ventas
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Genera y exporta informes detallados de las ventas del kiosko.</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                                    <h5 class="card-title">Informe de Ventas</h5>
+                                    <p class="card-text">
+                                        Visualiza y exporta informes detallados de ventas con filtros por mes, turno, nivel y recreo.
+                                    </p>
+                                    <a href="{% url 'caja:informe_ventas' %}" class="btn btn-success">
+                                        <i class="fas fa-chart-line me-2"></i>Ver Informe
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-download fa-3x text-primary mb-3"></i>
+                                    <h5 class="card-title">Exportación Rápida</h5>
+                                    <p class="card-text">
+                                        Descarga directamente un archivo Excel con los datos de ventas del mes actual.
+                                    </p>
+                                    <a href="{% url 'caja:exportar_ventas_excel' %}?mes={{ mes_actual }}&anio={{ anio_actual }}" 
+                                       class="btn btn-primary">
+                                        <i class="fas fa-file-excel me-2"></i>Descargar Excel
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h5><i class="fas fa-info-circle me-2"></i>Información</h5>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <strong>Filtros disponibles:</strong> Mes, año, turno (mañana/tarde), nivel (primario/secundario), número de recreo (1-4)
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Datos incluidos:</strong> Saldos iniciales, recreos, eventos especiales, pagos a proveedores, saldos finales
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Formatos de exportación:</strong> Excel (.xlsx) con formato profesional y totales calculados
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
