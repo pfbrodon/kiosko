@@ -10,6 +10,7 @@ from .models import (SaldoGeneral, SaldoElectronico, CajaDiaria, CajaElectronica
 from .forms import (InicioCajaForm, InicioCajaExtraForm, RecreoForm, EventoEspecialForm, 
                    PagoProveedorForm, InicioCajaElectronicaForm, IngresoElectronicoForm, 
                    PagoElectronicoForm, SaldoElectronicoForm)
+from .logging_utils import log_cambio_saldo_general, validar_consistencia_saldo
 from django import forms
 from usuarios.decorators import solo_admin, admin_o_encargado
 from django.utils import timezone
@@ -893,11 +894,36 @@ def confirmar_cerrar_caja(request, caja_id):
         
         # Al cerrar la caja, actualizamos el saldo general
         saldo_diferencia = caja.saldo_parcial - caja.saldo_inicial
+        
+        # Validar consistencia antes del cierre
+        es_valido, mensaje_validacion = validar_consistencia_saldo(caja, saldo_general.monto)
+        if not es_valido:
+            messages.warning(request, f"Advertencia: {mensaje_validacion}")
+        
+        # Guardar saldo anterior para auditoría
+        saldo_anterior = saldo_general.monto
+        
+        # MEJORA: Guardar la diferencia exacta para reaperturas futuras
+        caja.diferencia_al_cerrar = saldo_diferencia
+        
+        # Aplicar la diferencia al saldo general
         saldo_general.monto += saldo_diferencia
         saldo_general.save()
         
+        # Marcar como cerrada y guardar
         caja.cerrada = True
         caja.save()
+        
+        # Logging para auditoría
+        log_cambio_saldo_general(
+            accion="CIERRE",
+            caja_id=caja.id,
+            saldo_anterior=saldo_anterior,
+            saldo_nuevo=saldo_general.monto,
+            diferencia_aplicada=saldo_diferencia,
+            usuario=request.user,
+            observaciones=f"Caja {caja.get_nivel_display()} {caja.get_turno_display()} {caja.fecha}"
+        )
         
         mensaje = 'Caja extra cerrada correctamente' if caja.es_extra else 'Caja cerrada correctamente'
         messages.success(request, mensaje)
@@ -936,14 +962,48 @@ def reabrir_caja(request, caja_id):
         try:
             # Actualizar el saldo general restando la diferencia
             saldo_general = SaldoGeneral.objects.first()
-            if saldo_general:
-                # Usar la diferencia que ya está almacenada en la BD
-                # para evitar problemas con cambios en la lógica de cálculo
-                saldo_diferencia = caja.saldo_parcial - caja.saldo_inicial
-                saldo_general.monto -= saldo_diferencia
+            if saldo_general and caja.diferencia_al_cerrar is not None:
+                # MEJORA: Usar la diferencia exacta guardada al cerrar
+                # En lugar de recalcular, evitando discrepancias
+                saldo_anterior = saldo_general.monto
+                saldo_diferencia_original = caja.diferencia_al_cerrar
+                
+                saldo_general.monto -= saldo_diferencia_original
                 saldo_general.save()
                 
-                print(f"DEBUG: Reapertura - Diferencia restada: {saldo_diferencia}")
+                # Logging para auditoría
+                log_cambio_saldo_general(
+                    accion="REAPERTURA",
+                    caja_id=caja.id,
+                    saldo_anterior=saldo_anterior,
+                    saldo_nuevo=saldo_general.monto,
+                    diferencia_aplicada=-saldo_diferencia_original,
+                    usuario=request.user,
+                    observaciones=f"Reversión exacta - Diferencia guardada: ${saldo_diferencia_original}"
+                )
+                
+                # Limpiar la diferencia guardada para el próximo cierre
+                caja.diferencia_al_cerrar = None
+                caja.save()
+                
+            elif saldo_general:
+                # Fallback para cajas cerradas antes de la mejora
+                saldo_anterior = saldo_general.monto
+                saldo_diferencia_calculada = caja.saldo_parcial - caja.saldo_inicial
+                
+                saldo_general.monto -= saldo_diferencia_calculada
+                saldo_general.save()
+                
+                # Logging para auditoría (marcado como fallback)
+                log_cambio_saldo_general(
+                    accion="REAPERTURA_FALLBACK",
+                    caja_id=caja.id,
+                    saldo_anterior=saldo_anterior,
+                    saldo_nuevo=saldo_general.monto,
+                    diferencia_aplicada=-saldo_diferencia_calculada,
+                    usuario=request.user,
+                    observaciones="Fallback - Diferencia recalculada (posible discrepancia)"
+                )
             
             # Reabrir la caja
             caja.reabrir_caja(request.user)

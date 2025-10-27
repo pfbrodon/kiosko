@@ -64,6 +64,15 @@ class CajaDiaria(models.Model):
     usuario_reapertura = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT,
                                          related_name='cajas_reabiertas',
                                          help_text="Usuario que reabrió esta caja")
+    
+    # Campo para prevenir discrepancias en reaperturas
+    diferencia_al_cerrar = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        null=True, 
+        blank=True,
+        help_text="Diferencia exacta aplicada al saldo general cuando se cerró la caja"
+    )
 
     class Meta:
         unique_together = ['fecha', 'turno', 'nivel', 'es_extra']
